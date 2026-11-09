@@ -90,6 +90,18 @@ def create_app(db_path: str | Path = "ctxprof.db", web_dist: Path | None = WEB_D
             },
         }
 
+    @app.get("/api/prunes")
+    def prunes(s: Store = Depends(store)) -> list[dict[str, Any]]:
+        return s.list_prunes()
+
+    @app.get("/api/prunes/{prune_id}")
+    def prune_detail(prune_id: int, s: Store = Depends(store)) -> dict[str, Any]:
+        p = s.get_prune(prune_id)
+        if p is None:
+            raise HTTPException(404, f"prune {prune_id} not found")
+        p["run"] = next((r for r in s.list_runs() if r["id"] == p["run_id"]), None)
+        return p
+
     if web_dist and web_dist.is_dir():
         app.mount("/", StaticFiles(directory=web_dist, html=True), name="web")
     return app

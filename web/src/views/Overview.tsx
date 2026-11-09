@@ -1,12 +1,13 @@
-import { api, type Aggregate, type Run, type TraceRow } from "../api";
+import { api, type Aggregate, type PruneRow, type Run, type TraceRow } from "../api";
 import { fmt, heatClass, k } from "../heat";
 import { useLoad } from "../hooks";
 
-async function load(): Promise<{ traces: TraceRow[]; run: Run | null; agg: Aggregate | null }> {
-  const [traces, runs] = await Promise.all([api.traces(), api.runs()]);
+async function load(): Promise<{ traces: TraceRow[]; run: Run | null; agg: Aggregate | null; prune: PruneRow | null }> {
+  const [traces, runs, prunes] = await Promise.all([api.traces(), api.runs(), api.prunes().catch(() => [])]);
   const run = runs.find((r) => r.status === "done" || r.status === "budget") ?? null;
   const agg = run ? await api.aggregate(run.id).catch(() => null) : null;
-  return { traces, run, agg };
+  const prune = prunes.find((p) => p.run_id === run?.id && p.recommend) ?? null;
+  return { traces, run, agg, prune };
 }
 
 export function Overview() {
@@ -19,7 +20,7 @@ export function Overview() {
       </div></main>
     );
   }
-  const { traces, run, agg } = s.data;
+  const { traces, run, agg, prune } = s.data;
   if (!traces.length) {
     return (
       <main className="wrap"><div className="panel empty">
@@ -61,8 +62,14 @@ export function Overview() {
             <span className="mono dim" style={{ fontSize: 12 }}>cap ${Number(run.config.budget_usd).toFixed(2)} | {run.status}</span></div>
           <div><span className="lbl">DEAD fingerprints</span><span className="v">{dead.length}</span>
             <span className="mono dim" style={{ fontSize: 12 }}>{((deadTok / mean) * 100).toFixed(1)}% of tokens</span></div>
-          <div><span className="lbl">If removed / 100k req</span><span className="v">${((deadTok * price) / 1e6 * 1e5).toFixed(2)}</span>
-            <span className="mono dim" style={{ fontSize: 12 }}>unverified until M4</span></div>
+          {prune ? (
+            <a className="rlink" href={`#/pruning/${prune.id}`}><span className="lbl">Verified saving / 100k req</span>
+              <span className="v">${((prune.tokens_saved * price) / 1e6 * 1e5).toFixed(2)}</span>
+              <span className="mono dim" style={{ fontSize: 12 }}>prune {prune.id} · {((prune.agreement ?? 0) * 100).toFixed(1)}% agreement →</span></a>
+          ) : (
+            <div><span className="lbl">If all DEAD removed / 100k req</span><span className="v">${((deadTok * price) / 1e6 * 1e5).toFixed(2)}</span>
+              <span className="mono dim" style={{ fontSize: 12 }}>unverified: run ctxprof prune + verify</span></div>
+          )}
         </section>
       )}
 

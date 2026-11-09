@@ -39,3 +39,27 @@ def test_api_end_to_end(tmp_path):
     assert agg["summary"]["traces"] == 4 and agg["segments"]
     assert client.get("/api/traces/nope").status_code == 404
     store.close()
+
+
+def test_prune_endpoints(tmp_path):
+    from ctxprof.verify import VerifyConfig, run_verify
+
+    db = tmp_path / "api.db"
+    store, counter = Store(db), HeuristicCounter()
+    sc = SegmenterConfig.model_validate(SEGMENTER_YAML)
+    for t in generate_traces(6, seed=2):
+        store.save_trace(t, segment_trace(t, sc, counter))
+    run_id = store.create_run({})
+    hunk = {"fingerprint": "tool/get_weather", "kind": "tool", "file": "tools.json", "traces": 6,
+            "tokens_per_request": 113.0, "mean_influence": 0.0, "p95_influence": 0.0, "reason": "DEAD", "cut": True,
+            "lines": [{"no": 1, "sign": "-", "text": "get_weather"}]}
+    pid = store.create_prune(run_id, "examples/demo/prompt", [], {"hunks": [hunk], "skipped": [], "diff": "--- a"})
+    client = TestClient(create_app(db, web_dist=None))
+    listed = client.get("/api/prunes").json()
+    assert listed[0]["id"] == pid and listed[0]["status"] == "unverified" and "hunks" not in listed[0]
+    asyncio.run(run_verify(store, demo_provider(), pid, VerifyConfig(), counter))
+    detail = client.get(f"/api/prunes/{pid}").json()
+    assert detail["status"] == "verified" and detail["recommend"] is True and detail["run"]["id"] == run_id
+    assert detail["verification"]["summary"]["traces"] == 6 and detail["hunks"][0]["lines"]
+    assert client.get("/api/prunes/999").status_code == 404
+    store.close()

@@ -8,8 +8,8 @@ by **tokens paid × influence** across hundreds of traces.
 > "I built a profiler that tells you which parts of a prompt you're paying for but not using,
 > and proves removing them is safe."
 
-Status: milestones M1–M3 are in (import, segmenting, flame graph, attribution engine, aggregation,
-labels, injection signal, API and UI). Pruning diff and verification (M4) are next. See
+Status: M1–M4 are in: import, segmenting, flame graph, attribution engine, aggregation, labels,
+injection signal, pruning diff, held-out verification with a cost report, API and UI. See
 `roadmap.txt`.
 
 ## Quick start (Windows, Python 3.12, Node 20+)
@@ -34,13 +34,40 @@ On macOS/Linux use `python3.12 -m venv .venv` and `.venv/bin/...`.
 | `ctxprof aggregate [--run N] [--json]` | Aggregate by fingerprint; DEAD / CRITICAL / VOLATILE; injection signals |
 | `ctxprof flame TRACE_ID` | Flame tree JSON for one trace |
 | `ctxprof serve` | FastAPI on :8000, serves `web/dist` |
-| `ctxprof prune`, `ctxprof verify` | Milestone M4 (not implemented yet) |
+| `ctxprof prune [--bundle DIR] [--keep FP]... [--out prompt.diff] [--write DIR]` | Unified diff removing DEAD sections / tools / chunks from the prompt bundle |
+| `ctxprof verify [--prune N] [--held-out K] [--threshold 0.95] [--eval CMD]` | Replay held-out traces original vs pruned; exit 0 = recommend |
+| `ctxprof export [--out web/dist]` | Static JSON snapshot of the API (for a serverless UI build) |
 
 Black-box mode works against any OpenAI-compatible endpoint, e.g. Ollama:
 
 ```bash
 ctxprof profile --provider openai --base-url http://localhost:11434/v1 --model llama3.1:8b --mode blackbox --sample 20
 ```
+
+## Pruning and verification (M4)
+
+`ctxprof prune` turns DEAD fingerprints into a diff against the *prompt bundle* (`system.md`
+sections removed by heading, `tools.json` schemas removed by name, chunk ids appended to
+`retriever.yaml`'s `exclude:` list). VOLATILE and CRITICAL segments are never candidates;
+untrusted, pinned, injection-flagged and history segments are listed as "not pruned" with the
+reason. `--keep FP` keeps a candidate (its hunk is still shown, unticked).
+
+`ctxprof verify` replays traces the profile never saw: the original request and the pruned one,
+both at temperature 0, compared with the black-box metric (or your `--eval` command). Each
+regression is re-run once per cut hunk with that hunk restored, so it names its suspect; kept
+hunks are probed by cutting them. The UI's per-hunk "Cut" toggles recompute the ledger and
+verdict from that evidence (exact for the verified selection, labelled an estimate otherwise).
+
+Demo result (`ctxprof demo`: 200 traces profiled, 60 held out, fake model, heuristic tokens):
+
+| Diff | Hunks | Tokens / request | Cost / request at $3/M | Agreement | Verdict |
+|---|---|---|---|---|---|
+| default (all DEAD) | 14 | 4,380 → 1,987 (−54.6%) | $0.01314 → $0.00596 | 54/60 = 90.0% | below 95%: 6 regressions, all scam questions, suspect `tool/report_listing` |
+| `--keep tool/report_listing` | 13 | 4,380 → 2,150 (−50.9%) | $0.01314 → $0.00645 | 60/60 = 100% | recommend: saves $669.03 (KSh 86,305) per 100k requests |
+
+`report_listing` is used only when a listing asks for money (6% of traffic), so its average
+influence is ~0 and it is labelled DEAD; verification on held-out traces is what catches it. These
+are fake-model numbers that prove the pipeline, not real-world savings.
 
 ## Method, in one paragraph
 
@@ -59,8 +86,11 @@ segment in the trace (floored, so traces where nothing matters do not inflate no
   question removes the biggest interaction; others remain and show up as lower held-out R².
 - **Cost.** Attribution costs about N model calls per trace (N = 32 by default). The cache makes
   re-runs free; the budget cap stops a run before it overspends.
-- **Rare-but-needed segments.** A segment used in 2% of traces can look DEAD. That is why pruning
-  must be verified on held-out traces before it is recommended (M4).
+- **Rare-but-needed segments.** A segment used in a few % of traces can look DEAD (the demo's
+  `report_listing`). That is why a diff is only recommended after held-out verification.
+- **Verification is a sample.** 60 held-out traces at a 95% threshold cannot see a regression
+  rarer than a few %. The per-hunk estimate assumes removals do not interact beyond what the
+  probes saw; re-run `verify` on the selection you ship.
 - **Demo numbers come from a fake model** whose answers depend only on known segments, which makes
   the ground truth checkable. Real-model numbers belong in the M5 case study.
 

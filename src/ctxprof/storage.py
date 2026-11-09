@@ -83,6 +83,24 @@ CREATE TABLE IF NOT EXISTS calls (
   cost_usd REAL NOT NULL,
   created_at REAL NOT NULL
 );
+CREATE TABLE IF NOT EXISTS prunes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  run_id INTEGER NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+  created_at REAL NOT NULL,
+  status TEXT NOT NULL,            -- unverified | verified | budget
+  bundle TEXT NOT NULL,
+  keep_json TEXT NOT NULL,
+  removed_json TEXT NOT NULL,      -- fingerprints the diff removes
+  hunks_json TEXT NOT NULL,
+  skipped_json TEXT NOT NULL,
+  diff TEXT NOT NULL,
+  tokens_saved REAL NOT NULL,      -- per request: estimate from the run, then measured by verify
+  agreement REAL,
+  recommend INTEGER,
+  regressions_json TEXT,
+  verify_json TEXT,
+  verified_at REAL
+);
 """
 
 
@@ -215,6 +233,75 @@ class Store:
             "JOIN trace_fits f ON f.run_id = a.run_id AND f.trace_id = a.trace_id "
             "WHERE a.run_id = ? AND a.influence IS NOT NULL", (run_id,))
         return [dict(r) for r in rows]
+
+    def run_trace_ids(self, run_id: int) -> list[str]:
+        return [r[0] for r in self.conn.execute(
+            "SELECT trace_id FROM trace_fits WHERE run_id = ? ORDER BY trace_id", (run_id,))]
+
+    def tool_call_counts(self, trace_ids: Iterable[str] | None = None) -> dict[str, int]:
+        """How many recorded responses call each tool (evidence shown next to a tool hunk)."""
+        wanted = set(trace_ids) if trace_ids is not None else None
+        counts: dict[str, int] = {}
+        for r in self.conn.execute("SELECT id, response_json FROM traces"):
+            if wanted is not None and r["id"] not in wanted:
+                continue
+            names = {c.get("name") for c in json.loads(r["response_json"]).get("tool_calls", [])}
+            for name in names:
+                counts[name] = counts.get(name, 0) + 1
+        return counts
+
+    # ---- prunes ------------------------------------------------------------
+    def create_prune(self, run_id: int, bundle: str, keep: list[str], plan: dict[str, Any]) -> int:
+        removed = [h["fingerprint"] for h in plan["hunks"] if h["cut"]]
+        saved = sum(h["tokens_per_request"] for h in plan["hunks"] if h["cut"])
+        with self.conn:
+            cur = self.conn.execute(
+                "INSERT INTO prunes (run_id, created_at, status, bundle, keep_json, removed_json, hunks_json, "
+                "skipped_json, diff, tokens_saved) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                (run_id, time.time(), "unverified", bundle, json.dumps(keep), json.dumps(removed),
+                 json.dumps(plan["hunks"], ensure_ascii=False), json.dumps(plan["skipped"], ensure_ascii=False),
+                 plan["diff"], saved),
+            )
+        return int(cur.lastrowid)
+
+    def save_verification(self, prune_id: int, report: dict[str, Any]) -> None:
+        s = report["summary"]
+        with self.conn:
+            self.conn.execute(
+                "UPDATE prunes SET status=?, tokens_saved=?, agreement=?, recommend=?, regressions_json=?, "
+                "verify_json=?, verified_at=? WHERE id=?",
+                (report["status"], s["tokens_saved"], s["agreement"], int(s["recommend"]),
+                 json.dumps(report["regressions"], ensure_ascii=False), json.dumps(report, ensure_ascii=False),
+                 time.time(), prune_id),
+            )
+
+    @staticmethod
+    def _prune_row(r: sqlite3.Row, full: bool) -> dict[str, Any]:
+        d = {k: r[k] for k in ("id", "run_id", "created_at", "status", "bundle", "tokens_saved", "agreement",
+                               "verified_at")}
+        d["recommend"] = None if r["recommend"] is None else bool(r["recommend"])
+        d["keep"] = json.loads(r["keep_json"])
+        d["removed"] = json.loads(r["removed_json"])
+        regs = json.loads(r["regressions_json"]) if r["regressions_json"] else []
+        d["n_regressions"] = len(regs)
+        if full:
+            d["hunks"] = json.loads(r["hunks_json"])
+            d["skipped"] = json.loads(r["skipped_json"])
+            d["diff"] = r["diff"]
+            d["regressions"] = regs
+            d["verification"] = json.loads(r["verify_json"]) if r["verify_json"] else None
+        return d
+
+    def list_prunes(self) -> list[dict[str, Any]]:
+        return [self._prune_row(r, False) for r in self.conn.execute("SELECT * FROM prunes ORDER BY id DESC")]
+
+    def get_prune(self, prune_id: int) -> dict[str, Any] | None:
+        r = self.conn.execute("SELECT * FROM prunes WHERE id = ?", (prune_id,)).fetchone()
+        return self._prune_row(r, True) if r else None
+
+    def latest_prune_id(self) -> int | None:
+        r = self.conn.execute("SELECT id FROM prunes ORDER BY id DESC").fetchone()
+        return int(r["id"]) if r else None
 
     # ---- model-call cache -------------------------------------------------
     def cache_get(self, key: str) -> dict[str, Any] | None:

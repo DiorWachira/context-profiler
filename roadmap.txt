@@ -48,7 +48,7 @@ Milestones from the spec, and where each stands:
        - logprob mode against a REAL local model ................................ NOT DONE (see 5.2)
   M3 Black-box mode, aggregation, DEAD/CRITICAL/VOLATILE labels ................ DONE
        - injection signal (spec lists it under M4) .............................. DONE
-  M4 Pruning diff + verification + cost report ................................. NOT STARTED
+  M4 Pruning diff + verification + cost report ................................. DONE (9 Nov)
   M5 Case study, README method/limitations, mode comparison .................... README drafted
 
 Verified on 9 Nov 2026:
@@ -158,7 +158,7 @@ D10 Colour means influence only. Status (DEAD/CRITICAL/VOLATILE/injection) is gl
 
 5. NEXT WORK, IN ORDER (each with "done when")
 ----------------------------------------------
-5.1 M4 — Pruning diff + verification + cost report   <-- START HERE
+5.1 M4 — Pruning diff + verification + cost report   DONE 9 Nov 2026 (README has the numbers)
   a. src/ctxprof/prune.py
      - Input: a "prompt bundle" directory (see examples/demo/prompt: system.md + tools.json; add an
        optional retriever.yaml with an exclude list for chunk ids) + a run id + LabelRules.
