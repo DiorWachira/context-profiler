@@ -70,9 +70,22 @@ def test_held_out_pool_excludes_profiled_traces(store, counter):
     assert len(choose_held_out(store, run_id, 2)[0]) == 2
 
 
-def test_eval_command_decides_agreement(store, counter):
+def test_eval_command_decides_agreement(store, counter, tmp_path):
     _, run_id = setup(store, counter, n=6)
     pid = make_prune(store, run_id)
+    # a real eval script: agree iff both answers make the same tool calls (reads both JSON files)
+    script = tmp_path / "my eval.py"  # a space in the path exercises the quoting
+    script.write_text(
+        "import json, sys\n"
+        "a, b = (json.load(open(p, encoding='utf-8')) for p in sys.argv[1:3])\n"
+        "names = lambda r: [c['name'] for c in r['tool_calls']]\n"
+        "sys.exit(0 if names(a) == names(b) else 1)\n", encoding="utf-8")
+    from ctxprof.verify import _quote
+    cmd = f"{_quote(sys.executable)} {_quote(str(script))} {{original}} {{pruned}}"
+    rep = asyncio.run(run_verify(store, demo_provider(), pid, VerifyConfig(eval_cmd=cmd, probe=False), counter))
+    plain = asyncio.run(run_verify(store, demo_provider(), pid, VerifyConfig(probe=False), counter))
+    assert rep["summary"]["agree_n"] == plain["summary"]["agree_n"] > 0  # same verdicts as the tool metric here
+
     always_fail = f'"{sys.executable}" -c "import sys; sys.exit(1)" {{original}} {{pruned}}'
     rep = asyncio.run(run_verify(store, demo_provider(), pid, VerifyConfig(eval_cmd=always_fail, probe=False),
                                  counter))

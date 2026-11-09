@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import random
 import shlex
 import subprocess
@@ -74,6 +75,11 @@ def _resp(r: Response) -> dict[str, Any]:
     return r.model_dump(mode="json")
 
 
+def _quote(path: str) -> str:
+    """Quote a path for the platform shell (cmd.exe does not understand POSIX single quotes)."""
+    return subprocess.list2cmdline([path]) if os.name == "nt" else shlex.quote(path)
+
+
 class _Judge:
     def __init__(self, cfg: VerifyConfig, gate: CallGate) -> None:
         self.cfg, self.gate = cfg, gate
@@ -96,7 +102,7 @@ class _Judge:
             a, b = Path(d) / "original.json", Path(d) / "pruned.json"
             a.write_text(json.dumps(_resp(original), ensure_ascii=False), encoding="utf-8")
             b.write_text(json.dumps(_resp(pruned), ensure_ascii=False), encoding="utf-8")
-            cmd = self.cfg.eval_cmd.format(original=shlex.quote(str(a)), pruned=shlex.quote(str(b)))
+            cmd = self.cfg.eval_cmd.format(original=_quote(str(a)), pruned=_quote(str(b)))
             return subprocess.run(cmd, shell=True, capture_output=True).returncode == 0  # noqa: S602
 
 
