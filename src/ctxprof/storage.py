@@ -75,6 +75,18 @@ CREATE TABLE IF NOT EXISTS ablations (
   response_text TEXT,
   PRIMARY KEY (run_id, trace_id, mask_idx)
 );
+CREATE TABLE IF NOT EXISTS interactions (
+  run_id INTEGER NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+  trace_id TEXT NOT NULL,
+  a INTEGER NOT NULL,          -- segment idx
+  b INTEGER NOT NULL,
+  effect_a REAL NOT NULL,      -- score drop when a alone is removed
+  effect_b REAL NOT NULL,
+  effect_ab REAL NOT NULL,     -- score drop when both are removed
+  interaction REAL NOT NULL,   -- effect_ab - (effect_a + effect_b); 0 if additive
+  relative REAL NOT NULL,
+  PRIMARY KEY (run_id, trace_id, a, b)
+);
 CREATE TABLE IF NOT EXISTS calls (
   key TEXT PRIMARY KEY,
   kind TEXT NOT NULL,
@@ -166,7 +178,8 @@ class Store:
                 "INSERT INTO runs (created_at, config_json, status) VALUES (?,?,?)",
                 (time.time(), json.dumps(config), "running"),
             )
-        return int(cur.lastrowid)
+        assert cur.lastrowid is not None
+        return cur.lastrowid
 
     def finish_run(self, run_id: int, status: str, spent: float, calls: int, cache_hits: int,
                    note: str | None = None) -> None:
@@ -191,7 +204,7 @@ class Store:
         return int(row["id"]) if row else None
 
     def save_attribution(self, run_id: int, trace_id: str, fit: dict[str, Any], rows: Iterable[tuple],
-                         ablations: Iterable[tuple]) -> None:
+                         ablations: Iterable[tuple], interactions: Iterable[tuple] = ()) -> None:
         with self.conn:
             self.conn.execute(
                 "INSERT OR REPLACE INTO trace_fits VALUES (?,?,?,?,?,?,?,?,?)",
@@ -206,6 +219,18 @@ class Store:
                 "INSERT OR REPLACE INTO ablations VALUES (?,?,?,?,?,?)",
                 [(run_id, trace_id, *a) for a in ablations],
             )
+            self.conn.executemany(
+                "INSERT OR REPLACE INTO interactions VALUES (?,?,?,?,?,?,?,?,?)",
+                [(run_id, trace_id, *x) for x in interactions],
+            )
+
+    def interactions(self, run_id: int, trace_id: str) -> list[dict[str, Any]]:
+        rows = self.conn.execute(
+            "SELECT i.*, sa.fingerprint AS fp_a, sb.fingerprint AS fp_b FROM interactions i "
+            "JOIN segments sa ON sa.trace_id = i.trace_id AND sa.idx = i.a "
+            "JOIN segments sb ON sb.trace_id = i.trace_id AND sb.idx = i.b "
+            "WHERE i.run_id = ? AND i.trace_id = ? ORDER BY ABS(i.relative) DESC", (run_id, trace_id))
+        return [{k: r[k] for k in r.keys() if k not in ("run_id", "trace_id")} for r in rows]
 
     def attributions(self, run_id: int, trace_id: str) -> dict[int, dict[str, Any]]:
         rows = self.conn.execute(
@@ -262,7 +287,8 @@ class Store:
                  json.dumps(plan["hunks"], ensure_ascii=False), json.dumps(plan["skipped"], ensure_ascii=False),
                  plan["diff"], saved),
             )
-        return int(cur.lastrowid)
+        assert cur.lastrowid is not None
+        return cur.lastrowid
 
     def save_verification(self, prune_id: int, report: dict[str, Any]) -> None:
         s = report["summary"]

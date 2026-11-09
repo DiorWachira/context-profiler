@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ctxprof"
-version = "0.1.0"
+version = "0.2.0"
 description = "Context Profiler: ablation-based attribution and cost profiling for LLM context windows"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -22,7 +22,8 @@ dependencies = [
 
 [project.optional-dependencies]
 tiktoken = ["tiktoken>=0.7"]
-dev = ["pytest>=8", "ruff>=0.6"]
+local = ["torch>=2.4", "transformers>=4.50"]
+dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.11", "types-PyYAML"]
 
 [project.scripts]
 ctxprof = "ctxprof.cli:app"
@@ -35,7 +36,8 @@ ctxprof = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+addopts = "-q -m 'not slow'"
+markers = ["slow: needs a real local model (pip install -e .[local]); run with -m slow"]
 
 [tool.ruff]
 line-length = 120
@@ -47,3 +49,13 @@ select = ["E", "F", "I", "B", "UP"]
 
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = ["fastapi.Depends"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = ["torch", "torch.*", "transformers", "transformers.*", "sklearn.*", "scipy.*"]
+follow_imports = "skip"

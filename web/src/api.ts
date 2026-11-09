@@ -56,6 +56,8 @@ export interface TraceDetail {
   }[];
   run: number | null; fit: Fit | null;
   ablations: { mask_idx: number; mask: string; score: number; response_text: string | null }[];
+  interactions: { a: number; b: number; fp_a: string; fp_b: string; effect_a: number; effect_b: number;
+    effect_ab: number; interaction: number; relative: number }[];
 }
 
 export interface DiffLine { no: number; sign: "-" | "+"; text: string; }

@@ -65,22 +65,42 @@ def _provider(name: str, base_url: str | None, model: str | None) -> Provider:
         if not base_url:
             raise typer.BadParameter("--base-url is required for --provider openai (e.g. http://localhost:11434/v1)")
         return OpenAICompatProvider(base_url, model=model)
-    raise typer.BadParameter(f"unknown provider {name!r}: fake-demo | openai")
+    if name == "hf":
+        from .providers.hf_local import HFLocalProvider
+
+        return HFLocalProvider(model or "Qwen/Qwen2.5-0.5B-Instruct")
+    raise typer.BadParameter(f"unknown provider {name!r}: fake-demo | openai | hf")
+
+
+def _embedder(metric: str, url: str | None, model: str | None):
+    if metric != "embedding":
+        return None
+    if not url or not model:
+        raise typer.BadParameter("--metric embedding needs --embed-url and --embed-model")
+    from .providers.embeddings import OpenAICompatEmbedder
+
+    return OpenAICompatEmbedder(url, model)
 
 
 @app.command()
 def profile(
-    provider: Annotated[str, typer.Option(help="fake-demo | openai (any OpenAI-compatible endpoint)")] = "fake-demo",
+    provider: Annotated[str, typer.Option(
+        help="fake-demo | openai (any OpenAI-compatible endpoint) | hf (local transformers model)")] = "fake-demo",
     base_url: Annotated[str | None, typer.Option(help="Endpoint for --provider openai")] = None,
     model: Annotated[str | None, typer.Option(help="Override the model name from the traces")] = None,
     mode: Annotated[str, typer.Option(help="logprob | blackbox")] = "logprob",
-    metric: Annotated[str, typer.Option(help="Black-box metric: auto | text | tool | json")] = "auto",
+    metric: Annotated[str, typer.Option(help="Black-box metric: auto | text | tool | json | embedding")] = "auto",
+    embed_url: Annotated[str | None, typer.Option(help="OpenAI-compatible base URL for /embeddings")] = None,
+    embed_model: Annotated[str | None, typer.Option(help="Embedding model name (metric embedding)")] = None,
     n_masks: Annotated[int, typer.Option("--n", help="Ablation masks per trace")] = 32,
     sample: Annotated[int | None, typer.Option(help="Profile a random sample of K traces")] = None,
     budget: Annotated[float, typer.Option(help="Hard spend cap in USD for this run")] = 5.0,
     price_in: Annotated[float, typer.Option(help="USD per 1M input tokens")] = 3.0,
     price_out: Annotated[float, typer.Option(help="USD per 1M output tokens")] = 15.0,
     concurrency: Annotated[int, typer.Option(help="Concurrent model calls")] = 4,
+    trace_concurrency: Annotated[int, typer.Option(help="Traces profiled at once")] = 4,
+    masks_per_segment: Annotated[float, typer.Option(help="Scale masks with segments: N >= this x segments")] = 0.0,
+    interactions: Annotated[int, typer.Option(help="Pairwise interaction check among the top K segments")] = 0,
     seed: Annotated[int, typer.Option(help="Random seed for sampling and masks")] = 0,
     counter: Annotated[str, typer.Option(help="Token counter for cost estimates")] = "heuristic",
     db: DbOpt = DEFAULT_DB,
@@ -93,8 +113,11 @@ def profile(
     if sample and sample < len(ids):
         ids = sorted(random.Random(seed).sample(ids, sample))
     prov = _provider(provider, base_url, model)
+    emb = _embedder(metric, embed_url, embed_model)
     cfg = ProfileConfig(n_masks=n_masks, mode=mode, metric=metric, seed=seed, concurrency=concurrency,
-                        budget_usd=budget, price_in_per_m=price_in, price_out_per_m=price_out)
+                        budget_usd=budget, price_in_per_m=price_in, price_out_per_m=price_out,
+                        trace_concurrency=trace_concurrency, masks_per_segment=masks_per_segment,
+                        interaction_top=interactions)
 
     def progress(n: int, total: int, gate) -> None:
         if n % 10 == 0 or n == total:
@@ -103,9 +126,12 @@ def profile(
 
     async def go() -> int:
         try:
-            return await run_profile(store, prov, cfg, get_counter(counter), ids, on_progress=progress)
+            return await run_profile(store, prov, cfg, get_counter(counter), ids, on_progress=progress,
+                                     embedder=emb)
         finally:
             await prov.aclose()
+            if emb is not None:
+                await emb.aclose()
 
     run_id = asyncio.run(go())
     run = next(r for r in store.list_runs() if r["id"] == run_id)
@@ -246,7 +272,9 @@ def verify(
     base_url: Annotated[str | None, typer.Option(help="Endpoint for --provider openai")] = None,
     model: Annotated[str | None, typer.Option(help="Model name (overrides the traces' model)")] = None,
     held_out: Annotated[int | None, typer.Option(help="Random sample of K held-out traces")] = None,
-    metric: Annotated[str, typer.Option(help="Black-box metric: auto | text | tool | json")] = "auto",
+    metric: Annotated[str, typer.Option(help="Black-box metric: auto | text | tool | json | embedding")] = "auto",
+    embed_url: Annotated[str | None, typer.Option(help="OpenAI-compatible base URL for /embeddings")] = None,
+    embed_model: Annotated[str | None, typer.Option(help="Embedding model name (metric embedding)")] = None,
     min_score: Annotated[float, typer.Option(help="Score at or above = same outcome")] = 0.9,
     threshold: Annotated[float, typer.Option(help="Agreement needed to recommend")] = 0.95,
     eval_cmd: Annotated[str | None, typer.Option(
@@ -265,15 +293,18 @@ def verify(
     if pid is None:
         raise typer.BadParameter("no prune yet; run `ctxprof prune` first")
     prov = _provider(provider, base_url, model)
+    emb = _embedder(metric, embed_url, embed_model)
     cfg = VerifyConfig(held_out=held_out, seed=seed, metric=metric, min_score=min_score, threshold=threshold,
                        eval_cmd=eval_cmd, probe=probe, price_in_per_m=price_in, price_out_per_m=price_out,
                        ksh_per_usd=ksh_per_usd, budget_usd=budget)
 
     async def go():
         try:
-            return await run_verify(store, prov, pid, cfg, get_counter("heuristic"))
+            return await run_verify(store, prov, pid, cfg, get_counter("heuristic"), embedder=emb)
         finally:
             await prov.aclose()
+            if emb is not None:
+                await emb.aclose()
 
     report = asyncio.run(go())
     raise typer.Exit(_print_verify(pid, report, cfg))
@@ -356,7 +387,7 @@ def demo(
     if not run_profile_too:
         return
     ids = store.trace_ids()[:n]
-    cfg = ProfileConfig(n_masks=32, mode="logprob", seed=0, concurrency=8, budget_usd=budget)
+    cfg = ProfileConfig(n_masks=32, mode="logprob", seed=0, concurrency=8, budget_usd=budget, interaction_top=3)
 
     def progress(i: int, total: int, gate) -> None:
         if i % 25 == 0 or i == total:

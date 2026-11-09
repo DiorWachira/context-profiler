@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -13,11 +14,12 @@ from .aggregate import aggregate, injection_signals
 from .flame import flame_tree
 from .storage import Store
 
-WEB_DIST = Path(__file__).resolve().parents[2] / "web" / "dist"
+# The built UI: web/dist in a source checkout, or wherever CTXPROF_WEB_DIST points (e.g. in Docker).
+WEB_DIST = Path(os.environ.get("CTXPROF_WEB_DIST") or Path(__file__).resolve().parents[2] / "web" / "dist")
 
 
 def create_app(db_path: str | Path = "ctxprof.db", web_dist: Path | None = WEB_DIST) -> FastAPI:
-    app = FastAPI(title="Context Profiler", version="0.1.0")
+    app = FastAPI(title="Context Profiler", version="0.2.0")
 
     def store() -> Iterator[Store]:
         s = Store(db_path)
@@ -68,6 +70,7 @@ def create_app(db_path: str | Path = "ctxprof.db", web_dist: Path | None = WEB_D
             "run": rid if attrs else None,
             "fit": s.trace_fit(rid, trace_id) if rid else None,
             "ablations": s.ablations(rid, trace_id) if rid else [],
+            "interactions": s.interactions(rid, trace_id) if rid else [],
         }
 
     @app.get("/api/runs/{run_id}/aggregate")

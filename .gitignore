@@ -14,3 +14,4 @@ examples/demo/
 web/test-results/
 web/playwright-report/
 web/shots/
+examples/case_study/bundle/

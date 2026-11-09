@@ -102,3 +102,37 @@ def test_aggregate_labels_and_injection_signal(store, counter):
     hits = injection_signals(rows)
     scam = {t.id for t in traces if t.meta["intent"] == "scam"}
     assert scam and any(h["trace_id"] in scam and h["fingerprint"].startswith("rag/listing:") for h in hits)
+
+
+def test_interaction_check_flags_and_effects(store, counter, small_trace, seg_config):
+    # "Shortlisted means" (a doc) AND "Tone rules" (a section) are needed together: a non-linear pair.
+    # "Refunds take" acts alone: additive with both.
+    effects = [Effect(needs=["Shortlisted means", "## Tone rules"], weight=3.0, phrase="You are shortlisted."),
+               Effect(needs=["Refunds take"], weight=2.0, phrase="Refunds: 14 days.")]
+    prov = FakeProvider(effects, noise=0.0)
+    small_trace.response = asyncio.run(prov.generate(small_trace.request)).as_response()
+    store.save_trace(small_trace, segment_trace(small_trace, seg_config, counter))
+    cfg = ProfileConfig(n_masks=40, budget_usd=1e9, n_boot=5, interaction_top=3, masks_per_segment=6)
+    run_id = asyncio.run(run_profile(store, prov, cfg, counter))
+    rows = {frozenset((r["fp_a"], r["fp_b"])): r for r in store.interactions(run_id, small_trace.id)}
+    and_pair = rows[frozenset(("rag/kb:faq#1", "system/## Tone rules"))]
+    assert and_pair["relative"] < -0.4  # removing both costs less than the sum: they act together
+    additive = rows[frozenset(("rag/kb:faq#1", "system/## Refund policy"))]
+    assert abs(additive["relative"]) < 0.1
+    fit = store.trace_fit(run_id, small_trace.id)
+    n_active = len(store.load_trace(small_trace.id)[1]) - 1  # the user turn is pinned
+    assert fit["n_masks"] == max(40, 6 * n_active)
+
+
+def test_trace_concurrency_gives_identical_results(tmp_path, counter):
+    from ctxprof.storage import Store
+
+    traces = generate_traces(6, seed=8)
+    results = []
+    for tc in (1, 4):
+        store = Store(tmp_path / f"c{tc}.db")
+        run_id = _profile(store, demo_provider(), traces,
+                          ProfileConfig(n_masks=16, budget_usd=1e9, n_boot=5, trace_concurrency=tc), counter)
+        results.append({t.id: store.attributions(run_id, t.id) for t in traces})
+        store.close()
+    assert results[0] == results[1]

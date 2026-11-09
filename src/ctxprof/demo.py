@@ -11,7 +11,6 @@ output can be checked against ground truth. Everything is deterministic given ``
 
 from __future__ import annotations
 
-import asyncio
 import json
 import random
 from pathlib import Path
@@ -270,11 +269,11 @@ def generate_traces(n: int = 200, seed: int = 7) -> list[Trace]:
         rng.shuffle(docs)
         n_hist = rng.choice([0, 0, 2, 4])
         messages = [Message(role="system", content=system)]
-        messages += [Message(role=r, content=c) for r, c in HISTORY[:n_hist]]
+        messages += [Message.model_validate({"role": r, "content": c}) for r, c in HISTORY[:n_hist]]
         messages.append(Message(role="user", content="Context:\n" + "\n".join(docs) + "\n\nQuestion: " + user_q))
         request = Request(model="jobbridge-fake-8b", params={"temperature": 0, "max_tokens": 300},
                           messages=messages, tools=list(TOOLS))
-        completion = asyncio.run(provider.generate(request))
+        completion = provider.generate_sync(request)
         traces.append(Trace(id=f"t{i:04d}", request=request, response=completion.as_response(),
                             meta={"intent": intent, "sheng": sheng}))
     return traces

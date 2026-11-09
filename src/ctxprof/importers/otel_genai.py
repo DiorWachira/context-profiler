@@ -20,7 +20,7 @@ from ..models import Message, Request, Response, Tool, ToolCall, Trace
 # Attribute names follow the GenAI conventions' JSON-attribute form (gen_ai.input.messages etc.).
 # Check them against the current spec before relying on a new instrumentation library.
 MAPPING_VERSION = "otel-genai-semconv/development"
-MAPPING = {
+MAPPING: dict[str, Any] = {
     "operation": "gen_ai.operation.name",
     "model": "gen_ai.request.model",
     "system_instructions": "gen_ai.system_instructions",

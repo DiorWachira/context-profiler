@@ -75,16 +75,23 @@ def _resp(r: Response) -> dict[str, Any]:
 
 
 class _Judge:
-    def __init__(self, cfg: VerifyConfig) -> None:
-        self.cfg = cfg
+    def __init__(self, cfg: VerifyConfig, gate: CallGate) -> None:
+        self.cfg, self.gate = cfg, gate
 
-    def __call__(self, original: Response, pruned: Response) -> tuple[bool, float]:
-        score = blackbox_score(original, pruned, self.cfg.metric)
+    async def __call__(self, original: Response, pruned: Response) -> tuple[bool, float]:
+        sim = None
+        if self.cfg.metric == "embedding":
+            sims = await self.gate.similarities(original.text, [pruned.text])
+            if sims is None:
+                raise ValueError("metric 'embedding' needs an embedder")
+            sim = sims[0]
+        score = blackbox_score(original, pruned, self.cfg.metric, sim)
         if not self.cfg.eval_cmd:
             return score >= self.cfg.min_score, score
         return self._run_eval(original, pruned), score
 
     def _run_eval(self, original: Response, pruned: Response) -> bool:
+        assert self.cfg.eval_cmd is not None
         with tempfile.TemporaryDirectory(prefix="ctxprof-eval-") as d:
             a, b = Path(d) / "original.json", Path(d) / "pruned.json"
             a.write_text(json.dumps(_resp(original), ensure_ascii=False), encoding="utf-8")
@@ -111,7 +118,7 @@ async def verify_trace(gate: CallGate, judge: _Judge, store: Store, trace_id: st
 
     original, pruned = await asyncio.gather(run(set()), run(cut))
     o, p = original.as_response(), pruned.as_response()
-    agree, score = judge(o, p)
+    agree, score = await judge(o, p)
 
     tokens_before = sum(s.tokens for s in segs)
     removed_tokens: dict[str, int] = {}
@@ -129,7 +136,8 @@ async def verify_trace(gate: CallGate, judge: _Judge, store: Store, trace_id: st
         rec["original"], rec["pruned"] = _resp(o), _resp(p)
         if cfg.probe and cut_here:
             restored = await asyncio.gather(*(run(cut - {h}) for h in cut_here))
-            suspects = [h for h, r in zip(cut_here, restored, strict=True) if judge(o, r.as_response())[0]]
+            verdicts = [await judge(o, r.as_response()) for r in restored]
+            suspects = [h for h, (ok, _) in zip(cut_here, verdicts, strict=True) if ok]
             rec["explained"] = bool(suspects)
             rec["breaks"] = suspects or cut_here
         else:
@@ -139,7 +147,7 @@ async def verify_trace(gate: CallGate, judge: _Judge, store: Store, trace_id: st
         probe_here = sorted(kept & present)
         results = await asyncio.gather(*(run(cut | {k}) for k in probe_here))
         for k, r in zip(probe_here, results, strict=True):
-            ok, sc = judge(o, r.as_response())
+            ok, sc = await judge(o, r.as_response())
             if not ok:
                 rec["breaks"].append(k)
                 rec["probes"][k] = {"score": round(sc, 4), "pruned": _resp(r.as_response())}
@@ -172,7 +180,7 @@ def summarise(records: list[dict[str, Any]], selection: set[str], cfg: VerifyCon
 
 
 async def run_verify(store: Store, provider: Provider, prune_id: int, cfg: VerifyConfig, counter: TokenCounter,
-                     trace_ids: list[str] | None = None, on_progress=None) -> dict[str, Any]:
+                     trace_ids: list[str] | None = None, on_progress=None, embedder=None) -> dict[str, Any]:
     prune = store.get_prune(prune_id)
     if prune is None:
         raise KeyError(f"prune {prune_id} not found")
@@ -185,8 +193,8 @@ async def run_verify(store: Store, provider: Provider, prune_id: int, cfg: Verif
 
     pcfg = ProfileConfig(mode="blackbox", metric=cfg.metric, budget_usd=cfg.budget_usd, concurrency=cfg.concurrency,
                          price_in_per_m=cfg.price_in_per_m, price_out_per_m=cfg.price_out_per_m)
-    gate = CallGate(store, provider, pcfg, counter)
-    judge = _Judge(cfg)
+    gate = CallGate(store, provider, pcfg, counter, embedder)
+    judge = _Judge(cfg, gate)
 
     def out_tokens(r: Response) -> int:
         return max(1, counter.count(r.text) + 8 * len(r.tool_calls))

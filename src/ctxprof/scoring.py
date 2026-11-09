@@ -2,8 +2,8 @@
 
 * ``logprob`` mode scores the logit-scaled probability of the original response (ContextCite).
 * ``blackbox`` mode scores 1 - normalised change, from text similarity, tool-call agreement or
-  JSON field agreement. Text similarity is a character 3-gram cosine by default; an embedding
-  model can replace it (see roadmap).
+  JSON field agreement. Text similarity is a character 3-gram cosine by default; metric
+  ``embedding`` uses the cosine of answer embeddings from an embedding model instead.
 """
 
 from __future__ import annotations
@@ -59,7 +59,16 @@ def json_field_agreement(a: str, b: str) -> float:
     return sum(ja.get(k) == jb.get(k) for k in keys) / len(keys) if keys else 1.0
 
 
-def blackbox_score(original: Response, ablated: Response, metric: str = "auto") -> float:
+def blackbox_score(original: Response, ablated: Response, metric: str = "auto",
+                   semantic_sim: float | None = None) -> float:
+    """``semantic_sim`` is the embedding cosine of the two answers (required for metric ``embedding``)."""
+    if metric == "embedding":
+        if semantic_sim is None:
+            raise ValueError("metric 'embedding' needs semantic_sim (pass an embedder)")
+        sim = max(0.0, min(1.0, semantic_sim))
+        if original.tool_calls:
+            return 0.5 * tool_call_agreement(original, ablated) + 0.5 * sim
+        return sim
     if metric == "text":
         return text_similarity(original.text, ablated.text)
     if metric == "tool":

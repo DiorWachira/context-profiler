@@ -6,7 +6,7 @@ import { mkdirSync } from "node:fs";
 const base = process.argv[2] ?? "http://127.0.0.1:8000/";
 const out = process.argv[3] ?? "shots";
 mkdirSync(out, { recursive: true });
-const pages = { overview: "#/", segments: "#/segments", pruning: "#/pruning", trace: "#/trace/t0213" };
+const pages = { overview: "#/", segments: "#/segments", pruning: "#/pruning", trace: "#/trace/t0014", held: "#/trace/t0213" };
 const modes = [
   { name: "dark", width: 1440, height: 1000, scheme: "dark" },
   { name: "light", width: 1440, height: 1000, scheme: "light" },

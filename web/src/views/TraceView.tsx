@@ -149,6 +149,28 @@ function DrillDown({ detail, mask, setMask }: { detail: TraceDetail; mask: numbe
           })}
           {scored.length > 12 && <div className="w" style={{ borderBottom: 0 }}><span className="nm dim">{scored.length - 12} more</span><span /><span /></div>}
         </section>
+        {detail.interactions.length > 0 && (
+          <section className="panel" aria-labelledby="ix-h">
+            <div className="ph"><span className="n">04.4</span><h2 id="ix-h">Pairwise check</h2>
+              <span className="mono dim" style={{ marginLeft: "auto", fontSize: 11.5 }}>drop both vs. sum of each</span></div>
+            <ul className="list ix">
+              {detail.interactions.map((x) => {
+                const nonlinear = Math.abs(x.relative) >= 0.25;
+                return (
+                  <li key={`${x.a}-${x.b}`}>
+                    <span className="mono" aria-hidden="true">{nonlinear ? "≠" : "="}</span>
+                    <span className="fp" title={`${x.fp_a} + ${x.fp_b}`}>{x.fp_a} + {x.fp_b}</span>
+                    <span className="mono sm">{nonlinear ? (x.relative < 0 ? "AND / shared" : "redundant") : "additive"}
+                      {" "}{x.relative >= 0 ? "+" : "−"}{Math.abs(x.relative * 100).toFixed(0)}%</span>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="mono dim sm" style={{ margin: 0, padding: "8px 14px 12px" }}>
+              ≠ = removing the pair moves the score {">"}25% away from the sum of removing each alone: a linear
+              surrogate cannot represent it.</p>
+          </section>
+        )}
       </div>
     </div>
   );

@@ -24,6 +24,8 @@ class OpenAICompatProvider(Provider):
                  timeout: float = 120.0, transport: httpx.AsyncBaseTransport | None = None) -> None:
         self.base_url = base_url.rstrip("/")
         self.model = model
+        if model:  # the cache key uses provider name + the trace's model; an override must change it
+            self.name = f"openai-compat:{model}"
         key = api_key if api_key is not None else os.environ.get("CTXPROF_API_KEY", "")
         headers = {"Authorization": f"Bearer {key}"} if key else {}
         self._client = httpx.AsyncClient(base_url=self.base_url, headers=headers, timeout=timeout,

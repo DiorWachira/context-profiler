@@ -18,7 +18,7 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, Field
 
-from .models import KIND_ORDER, Locator, Segment, Source, Span, Trace, content_hash
+from .models import KIND_ORDER, Locator, Segment, SegmentKind, Source, Span, Trace, content_hash
 from .tokens import TokenCounter
 
 
@@ -71,7 +71,7 @@ def _text_of(content: str, ranges: list[_Range]) -> str:
 
 
 class _Draft(BaseModel):
-    kind: str
+    kind: SegmentKind
     source: Source
     fingerprint: str
     label: str
@@ -141,6 +141,7 @@ def segment_trace(trace: Trace, config: SegmenterConfig, counter: TokenCounter) 
             continue
 
         source: Source = "untrusted" if msg.role in config.untrusted_roles else "trusted"
+        kind: SegmentKind
         if m_i == current:
             kind, fp, label = "user", "user/current", "user (current)"
         else:

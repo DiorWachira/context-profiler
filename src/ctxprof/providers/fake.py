@@ -76,6 +76,9 @@ class FakeProvider(Provider):
         return (int.from_bytes(h[:4], "big") / 2**32 - 0.5) * 2 * self.noise
 
     async def generate(self, request: Request) -> Completion:
+        return self.generate_sync(request)
+
+    def generate_sync(self, request: Request) -> Completion:
         self.calls += 1
         fired = self._fired(request)
         text = " ".join(e.phrase for e in fired if e.phrase).strip() or "Sorry, I can't help with that."

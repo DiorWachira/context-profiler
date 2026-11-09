@@ -142,7 +142,8 @@ class _Editor:
         text = self.bundle.files.get(TOOLS_FILE)
         if text is None or text != json.dumps(self.tools, indent=2, ensure_ascii=False) + "\n":
             return None
-        lines, out, start = text.splitlines(), {}, None
+        lines, start = text.splitlines(), None
+        out: dict[str, tuple[int, int]] = {}
         for i, ln in enumerate(lines):
             if ln == "  {":
                 start = i
@@ -158,13 +159,13 @@ class _Editor:
         original = self.bundle.files.get(name)
         if name == SYSTEM_FILE:
             s, e = self.sections[fingerprint]
-            lines = original.splitlines()
+            lines = (original or "").splitlines()
             while e > s and not lines[e - 1].strip():  # trailing blank separator: not interesting
                 e -= 1
             return [DiffLine(no=i + 1, sign="-", text=lines[i]) for i in range(s, e)]
         if name == TOOLS_FILE and (ranges := self._tool_ranges()) is not None:
             s, e = ranges[fingerprint.removeprefix("tool/")]
-            lines = original.splitlines()
+            lines = (original or "").splitlines()
             return [DiffLine(no=i + 1, sign="-", text=lines[i]) for i in range(s, e)]
         diff = _diff_lines(original, self.render(name, {fingerprint}))
         if name == RETRIEVER_FILE:  # only the new exclude entry, not the header of a new file
@@ -238,7 +239,7 @@ def _diff_lines(old: str | None, new: str | None) -> list[DiffLine]:
 
 
 def unified_diff(bundle: Bundle, rendered: dict[str, str | None]) -> str:
-    chunks = []
+    chunks: list[str] = []
     for name in (SYSTEM_FILE, TOOLS_FILE, RETRIEVER_FILE):
         old = bundle.files.get(name)
         new = rendered.get(name, old)
