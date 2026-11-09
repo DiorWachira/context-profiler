@@ -213,7 +213,7 @@ D10 Colour means influence only. Status (DEAD/CRITICAL/VOLATILE/injection) is gl
   - Add an Embedder protocol (OpenAI-compatible /embeddings) and metric "embedding" (cosine).
   - Add OpenAICompatProvider tests with httpx.MockTransport (payload shape, tool calls, errors).
 
-5.4 Engine quality   DONE except sub-segments (see 5.8)
+5.4 Engine quality   DONE (sub-segments: segmenter tool_parts: true)
   - Concurrency across traces (today traces run sequentially; masks within a trace are concurrent).
   - Optional pairwise-interaction check: for top segments, report whether removing two together
     differs from the sum of removing each (flags non-linear traces beyond R²).
@@ -250,9 +250,7 @@ D10 Colour means influence only. Status (DEAD/CRITICAL/VOLATILE/injection) is gl
   - Run the case study on one of Dior's real prompts (RepoLens Examiner, JobBridge explanations)
     with real traces and a larger model (GPU or hosted API); CPU + 0.5B is enough to prove the
     method, not to quote savings for a product.
-  - Sub-segments (tool description / parameters; listing title / body) as depth-3 flame nodes.
-    Needs a Locator for tool parts, apply_mask support, and a rule for pruning a whole tool when
-    all its parts are DEAD.
+  - Sub-segments for retrieved listings (title / body), like tool_parts does for tools.
   - A vLLM / llama.cpp logprob provider for faster real-model runs (prompt_logprobs / echo).
   - Live-server tests for the OpenAI-compatible provider and the embedding metric (Ollama in CI).
 

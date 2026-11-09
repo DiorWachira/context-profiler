@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS segments (
   tokens INTEGER NOT NULL,
   content_hash TEXT NOT NULL,
   locator_json TEXT NOT NULL,
+  parent TEXT,
   PRIMARY KEY (trace_id, idx)
 );
 CREATE INDEX IF NOT EXISTS segments_fp ON segments(fingerprint);
@@ -123,6 +124,10 @@ class Store:
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("PRAGMA foreign_keys = ON")
         self.conn.executescript(SCHEMA)
+        cols = {r["name"] for r in self.conn.execute("PRAGMA table_info(segments)")}
+        if "parent" not in cols:  # databases created before sub-segments existed
+            with self.conn:
+                self.conn.execute("ALTER TABLE segments ADD COLUMN parent TEXT")
 
     def close(self) -> None:
         self.conn.close()
@@ -138,9 +143,10 @@ class Store:
                  json.dumps(trace.meta, ensure_ascii=False), total, time.time()),
             )
             self.conn.executemany(
-                "INSERT INTO segments VALUES (?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO segments (trace_id, idx, kind, source, fingerprint, label, tokens, content_hash, "
+                "locator_json, parent) VALUES (?,?,?,?,?,?,?,?,?,?)",
                 [(s.trace_id, s.index, s.kind, s.source, s.fingerprint, s.label, s.tokens, s.content_hash,
-                  s.locator.model_dump_json()) for s in segments],
+                  s.locator.model_dump_json(), s.parent) for s in segments],
             )
 
     def trace_ids(self) -> list[str]:
@@ -177,7 +183,8 @@ class Store:
         segs = [
             Segment(trace_id=r["trace_id"], index=r["idx"], kind=r["kind"], source=r["source"],
                     fingerprint=r["fingerprint"], label=r["label"], tokens=r["tokens"],
-                    content_hash=r["content_hash"], locator=Locator.model_validate_json(r["locator_json"]))
+                    content_hash=r["content_hash"], locator=Locator.model_validate_json(r["locator_json"]),
+                    parent=r["parent"])
             for r in self.conn.execute("SELECT * FROM segments WHERE trace_id = ? ORDER BY idx", (trace_id,))
         ]
         return trace, segs
@@ -264,7 +271,7 @@ class Store:
         """Joined attribution + segment rows for aggregation."""
         rows = self.conn.execute(
             "SELECT a.trace_id, a.idx, a.weight, a.influence, s.kind, s.source, s.fingerprint, s.label, s.tokens, "
-            "f.poor_fit FROM attributions a "
+            "s.parent, f.poor_fit FROM attributions a "
             "JOIN segments s ON s.trace_id = a.trace_id AND s.idx = a.idx "
             "JOIN trace_fits f ON f.run_id = a.run_id AND f.trace_id = a.trace_id "
             "WHERE a.run_id = ? AND a.influence IS NOT NULL", (run_id,))

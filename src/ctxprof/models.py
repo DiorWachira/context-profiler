@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 SegmentKind = Literal["system", "tool", "retrieved", "history", "user"]
 Source = Literal["trusted", "untrusted"]
+ToolPart = Literal["description", "parameters"]
 KIND_ORDER: tuple[SegmentKind, ...] = ("system", "tool", "retrieved", "history", "user")
 
 
@@ -77,11 +78,13 @@ class Span(BaseModel):
 class Locator(BaseModel):
     """Where a segment lives in the request, so it can be removed for ablation.
 
-    Exactly one of: ``tool`` (index into request.tools), ``whole_message`` (index into
-    request.messages), or ``spans`` (character ranges inside message contents).
+    Exactly one of: ``tool`` (index into request.tools; with ``tool_part`` only that part of the
+    schema), ``whole_message`` (index into request.messages), or ``spans`` (character ranges
+    inside message contents).
     """
 
     tool: int | None = None
+    tool_part: ToolPart | None = None
     whole_message: int | None = None
     spans: list[Span] = Field(default_factory=list)
 

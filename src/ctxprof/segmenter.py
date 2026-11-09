@@ -12,13 +12,14 @@ Rules (configurable via ``segmenter.yaml``):
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
 import yaml
 from pydantic import BaseModel, Field
 
-from .models import KIND_ORDER, Locator, Segment, SegmentKind, Source, Span, Trace, content_hash
+from .models import KIND_ORDER, Locator, Segment, SegmentKind, Source, Span, ToolPart, Trace, content_hash
 from .tokens import TokenCounter
 
 
@@ -34,6 +35,10 @@ class SegmenterConfig(BaseModel):
     # e.g. [["^rag/listing:.*$", "rag/listing:*"]]. The display label keeps the specific id.
     fingerprint_rewrites: list[tuple[str, str]] = Field(default_factory=list)
     min_tokens: int = 1
+    # Split each tool into "tool/<name>:description" and "tool/<name>:parameters" sub-segments
+    # (parent "tool/<name>"), shown as depth-3 nodes in the flame graph. Pruning removes a tool
+    # only when every part of it is DEAD.
+    tool_parts: bool = False
 
     @classmethod
     def load(cls, path: str | Path | None) -> SegmenterConfig:
@@ -78,6 +83,7 @@ class _Draft(BaseModel):
     text: str
     locator: Locator
     order: tuple[int, int, int]
+    parent: str | None = None
 
 
 def segment_trace(trace: Trace, config: SegmenterConfig, counter: TokenCounter) -> list[Segment]:
@@ -97,12 +103,26 @@ def segment_trace(trace: Trace, config: SegmenterConfig, counter: TokenCounter) 
         return "untrusted" if any(doc_id.startswith(p) for p in config.untrusted_doc_prefixes) else "trusted"
 
     for t_i, tool in enumerate(req.tools):
-        drafts.append(
-            _Draft(
-                kind="tool", source="trusted", fingerprint=f"tool/{tool.name}", label=tool.name,
-                text=tool.schema_text(), locator=Locator(tool=t_i), order=(KIND_ORDER.index("tool"), t_i, 0),
+        k = KIND_ORDER.index("tool")
+        if not config.tool_parts:
+            drafts.append(
+                _Draft(
+                    kind="tool", source="trusted", fingerprint=f"tool/{tool.name}", label=tool.name,
+                    text=tool.schema_text(), locator=Locator(tool=t_i), order=(k, t_i, 0),
+                )
             )
-        )
+            continue
+        parent = f"tool/{tool.name}"
+        params = json.dumps(tool.parameters, sort_keys=True, ensure_ascii=False)
+        tool_parts: tuple[tuple[ToolPart, str], ...] = (
+            ("description", f"{tool.name}: {tool.description}"), ("parameters", params))
+        for p_i, (part, text) in enumerate(tool_parts):
+            drafts.append(
+                _Draft(
+                    kind="tool", source="trusted", fingerprint=f"{parent}:{part}", label=f"{tool.name} {part}",
+                    text=text, locator=Locator(tool=t_i, tool_part=part), order=(k, t_i, p_i), parent=parent,
+                )
+            )
 
     for m_i, msg in enumerate(req.messages):
         content = msg.content
@@ -183,6 +203,7 @@ def segment_trace(trace: Trace, config: SegmenterConfig, counter: TokenCounter) 
             Segment(
                 trace_id=trace.id, index=len(segments), kind=d.kind, source=d.source, fingerprint=fp,
                 label=d.label, tokens=tokens, content_hash=content_hash(d.text), locator=d.locator,
+                parent=d.parent,
             )
         )
     return segments

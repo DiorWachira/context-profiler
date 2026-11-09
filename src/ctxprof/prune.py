@@ -279,6 +279,28 @@ def _reason(a: dict[str, Any], tool_calls: dict[str, int] | None) -> str:
     return " · ".join(bits)
 
 
+def _merge_tool_parts(agg: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Collapse tool sub-segments into one row per tool: DEAD only if every part is DEAD."""
+    parts: dict[str, list[dict[str, Any]]] = {}
+    out = []
+    for a in agg:
+        if a.get("parent") and a["kind"] == "tool":
+            parts.setdefault(a["parent"], []).append(a)
+        else:
+            out.append(a)
+    for parent, ps in parts.items():
+        dead = [p for p in ps if p["label"] == "DEAD"]
+        out.append({
+            "fingerprint": parent, "kind": "tool", "source": ps[0]["source"], "label_name": parent,
+            "traces": max(p["traces"] for p in ps), "tokens_mean": sum(p["tokens_mean"] for p in ps),
+            "mean_influence": sum(p["mean_influence"] for p in ps),
+            "p95_influence": max(p["p95_influence"] for p in ps),
+            "label": "DEAD" if len(dead) == len(ps) else "",
+            "dead_parts": [p["fingerprint"].rsplit(":", 1)[-1] for p in dead] if 0 < len(dead) < len(ps) else [],
+        })
+    return out
+
+
 def build_plan(agg: list[dict[str, Any]], bundle: Bundle, *, keep: Iterable[str] = (),
                injection: Iterable[dict[str, Any]] = (), heading_levels: Iterable[int] = (1, 2, 3),
                pinned_kinds: Iterable[str] = ("user",), tool_calls: dict[str, int] | None = None,
@@ -297,8 +319,13 @@ def build_plan(agg: list[dict[str, Any]], bundle: Bundle, *, keep: Iterable[str]
 
     hunks: list[Hunk] = []
     skipped: list[Skipped] = []
+    agg = _merge_tool_parts(agg)
     for a in agg:
         if a["label"] != "DEAD":
+            if a.get("dead_parts"):
+                skipped.append(Skipped(
+                    fingerprint=a["fingerprint"], kind=a["kind"], label=a.get("label_name", a["fingerprint"]),
+                    why=f"only part of this tool is DEAD ({', '.join(a['dead_parts'])}); not pruned automatically"))
             continue
         fp, kind = a["fingerprint"], a["kind"]
 

@@ -59,7 +59,9 @@ Or with Docker (the image runs the demo at build time): `docker build -t ctxprof
 
 Useful `profile` options: `--metric embedding --embed-url URL --embed-model M` (embedding cosine
 instead of character n-grams), `--interactions 3` (pairwise check among the top 3 segments),
-`--masks-per-segment 1.5` (scale N with the number of segments), `--trace-concurrency 4`.
+`--masks-per-segment 1.5` (scale N with the number of segments), `--trace-concurrency 4`. In the
+segmenter YAML, `tool_parts: true` splits every tool into `:description` and `:parameters`
+sub-segments (a third level in the flame graph). A tool is pruned only when all of its parts are DEAD.
 
 ### Providers
 

@@ -100,8 +100,15 @@ class _Judge:
             return subprocess.run(cmd, shell=True, capture_output=True).returncode == 0  # noqa: S602
 
 
+def _hunk_of(s: Segment, hunks: set[str]) -> str | None:
+    """The hunk fingerprint that removes this segment (a tool hunk covers its sub-segments)."""
+    if s.fingerprint in hunks:
+        return s.fingerprint
+    return s.parent if s.parent in hunks else None
+
+
 def _keep(segments: list[Segment], removed: set[str]) -> list[bool]:
-    return [s.fingerprint not in removed for s in segments]
+    return [_hunk_of(s, removed) is None for s in segments]
 
 
 async def verify_trace(gate: CallGate, judge: _Judge, store: Store, trace_id: str, cut: set[str],
@@ -110,7 +117,7 @@ async def verify_trace(gate: CallGate, judge: _Judge, store: Store, trace_id: st
     trace, segs = store.load_trace(trace_id)
     base = _prepare(trace.request, pcfg)
     out_tokens = out_tokens_fn(trace.response)
-    present = {s.fingerprint for s in segs}
+    present = {s.fingerprint for s in segs} | {s.parent for s in segs if s.parent}
     cut_here = sorted(cut & present)
 
     def run(removed: set[str]):
@@ -123,8 +130,8 @@ async def verify_trace(gate: CallGate, judge: _Judge, store: Store, trace_id: st
     tokens_before = sum(s.tokens for s in segs)
     removed_tokens: dict[str, int] = {}
     for s in segs:
-        if s.fingerprint in cut or s.fingerprint in kept:
-            removed_tokens[s.fingerprint] = removed_tokens.get(s.fingerprint, 0) + s.tokens
+        if (h := _hunk_of(s, cut | kept)) is not None:
+            removed_tokens[h] = removed_tokens.get(h, 0) + s.tokens
 
     rec: dict[str, Any] = {
         "trace_id": trace_id, "intent": trace.meta.get("intent"), "agree": agree, "score": round(score, 4),

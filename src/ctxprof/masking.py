@@ -30,13 +30,22 @@ def sample_masks(n_masks: int, n_segments: int, p_keep: float = 0.5, seed: int =
 def apply_mask(request: Request, segments: list[Segment], keep: np.ndarray | list[bool]) -> Request:
     """Return a copy of ``request`` with every segment where ``keep`` is False removed."""
     drop_tools: set[int] = set()
+    drop_parts: dict[int, set[str]] = defaultdict(set)
+    part_count: dict[int, int] = defaultdict(int)
+    for seg in segments:
+        if seg.locator.tool is not None and seg.locator.tool_part:
+            part_count[seg.locator.tool] += 1
     drop_msgs: set[int] = set()
     cut: dict[int, list[tuple[int, int]]] = defaultdict(list)
     for seg, k in zip(segments, keep, strict=True):
         if k:
             continue
         loc = seg.locator
-        if loc.tool is not None:
+        if loc.tool is not None and loc.tool_part:
+            drop_parts[loc.tool].add(loc.tool_part)
+            if len(drop_parts[loc.tool]) == part_count[loc.tool]:
+                drop_tools.add(loc.tool)
+        elif loc.tool is not None:
             drop_tools.add(loc.tool)
         elif loc.whole_message is not None:
             drop_msgs.add(loc.whole_message)
@@ -57,7 +66,17 @@ def apply_mask(request: Request, segments: list[Segment], keep: np.ndarray | lis
         messages.append(m)
 
     messages = _repair_tool_pairs(messages)
-    tools = [t for i, t in enumerate(request.tools) if i not in drop_tools]
+    tools = []
+    for i, t in enumerate(request.tools):
+        if i in drop_tools:
+            continue
+        parts = drop_parts.get(i)
+        if parts:
+            t = t.model_copy(update={
+                "description": "" if "description" in parts else t.description,
+                "parameters": {"type": "object", "properties": {}} if "parameters" in parts else t.parameters,
+            })
+        tools.append(t)
     return request.model_copy(update={"messages": messages, "tools": tools})
 
 
