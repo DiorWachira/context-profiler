@@ -130,12 +130,13 @@ export function Flame({ tree, selected, onSelect, pricePerM = 3 }: FlameProps) {
     set(((e.clientX - r.left) / r.width) * T - span / 2, span);
   };
 
-  const rows: Flat[][] = [[], [], [], []];
+  const depth = Math.min(4, Math.max(...flat.map((f) => f.depth)) + 1);
+  const rows: Flat[][] = Array.from({ length: depth }, () => []);
   for (const f of flat) if (f.depth < rows.length) rows[f.depth].push(f);
   const logMax = Math.log(T / MIN_SPAN);
 
   return (
-    <section className="panel" aria-labelledby="fg-h">
+    <section className="panel screen-panel" aria-labelledby="fg-h" data-tour="flame">
       <div className="ph" style={{ gap: "8px 14px" }}>
         <span className="n">02.1</span><h2 id="fg-h">Flame stack</h2>
         <span className="dim" style={{ fontSize: 12.5, marginRight: "auto" }}>width = tokens, heat = influence</span>
@@ -168,7 +169,7 @@ export function Flame({ tree, selected, onSelect, pricePerM = 3 }: FlameProps) {
         <i className="brush" style={{ left: `${(v0 / T) * 100}%`, width: `${(span / T) * 100}%` }} />
       </div>
 
-      <button className="ruler" type="button" onClick={placeMarker}
+      <button className="ruler" type="button" onClick={placeMarker} data-tour="ruler"
         aria-label={`Token ruler from ${fmt(v0)} to ${fmt(v0 + span)}. Activate to drop marker M${markers.next}.`}>
         {ticks.map(({ t, major }) => (
           <span key={t} className={`tk ${major ? "mj" : ""}`} style={{ left: `${pct(t)}%`, height: major ? 16 : 6 }}>
@@ -180,7 +181,7 @@ export function Flame({ tree, selected, onSelect, pricePerM = 3 }: FlameProps) {
         {hx != null && <span className="ctag" style={{ left: hx }}>tok {fmt(v0 + (hx / W) * span)}</span>}
       </button>
 
-      <div ref={vpRef} className={`vp ${live ? "live" : ""}`} tabIndex={0} role="group"
+      <div ref={vpRef} className={`vp grat ${live ? "live" : ""}`} tabIndex={0} role="group"
         aria-label="Flame stack. W and S zoom, A and D pan, F zooms to the selection, 0 fits the whole window."
         onKeyDown={onKey}
         onPointerMove={(e) => setHx(e.clientX - e.currentTarget.getBoundingClientRect().left)}

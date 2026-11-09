@@ -12,11 +12,11 @@ that removes what never mattered, verified on traces it has not seen.
 > "I built a profiler that tells you which parts of a prompt you're paying for but not using,
 > and proves removing them is safe."
 
-![Pruning report: the default diff fails verification because report_listing is rarely but really needed](docs/img/pruning-dark.png)
+![Overview: Fig. 1 is a waterfall of 200 profiled requests, colour = influence, with seven-segment readouts](docs/img/overview-dark.png)
 
-| Flame graph of one request (light) | Overview (dark) | Pruning report at 390 px |
-|---|---|---|
-| ![Trace flame graph](docs/img/trace-light.png) | ![Overview](docs/img/overview-dark.png) | ![Pruning report on a phone](docs/img/pruning-phone.png) |
+| Pruning verdict (the default diff fails) | The guide, pointing at the suspect | Flame graph of one request (light) | Pruning at 390 px |
+|---|---|---|---|
+| ![Pruning report](docs/img/pruning-dark.png) | ![Guided tour callout](docs/img/guide-dark.png) | ![Trace flame graph](docs/img/trace-light.png) | ![Pruning report on a phone](docs/img/pruning-phone.png) |
 
 ## What it does
 
@@ -106,6 +106,36 @@ influence is about 0, so it gets labelled DEAD; held-out verification is what ca
 are fake-model numbers: they prove the pipeline, not real-world savings (see the case study).
 
 <!-- CASE-STUDY -->
+
+## The interface ("Bench")
+
+The UI treats the profiler as a piece of bench test equipment, a context spectrum analyser, and
+every element is drawn from that idea:
+
+- **Fig. 1, the waterfall.** Every profiled request is one row, x is token position, colour is
+  influence. It is borrowed from the waterfall displays of software-defined radios
+  ([Spectrum Lab](https://www.qsl.net/dl4yhf/speclab/), [SDRangel](https://repo.radio/VE7UWU/sdrangel/src/branch/copilot/add-github-action-flatpak/sdrgui/gui/spectrum.md)).
+  Hovering gives a crosshair readout, the arrow keys move it, and clicking opens the request.
+  Each fingerprint also gets a one-row "strip" of the same image in the segment table and the diff.
+- **Front panel.** Recessed screens with graticules, corner screws, silkscreened group brackets,
+  softkeys with indicator LEDs, seven-segment readouts, annunciator lamps for the verdict, and a
+  serial-plate footer with ventilation slots. These follow HP test-equipment panels
+  ([HP Memory Project](https://hpmemoryproject.org/timeline/time_design_01.htm)) and the Braun/Teenage
+  Engineering habit of tying physical keys to on-screen state.
+- **Colour means influence only.** It uses the warm flame-graph convention
+  ([Brendan Gregg](https://www.brendangregg.com/flamegraphs.html)) and a ramp validated for
+  colour-vision deficiency. Status is shown with glyphs, words and lamps; removed diff lines are
+  hatched and struck, never red.
+- **The guide.** Press `?` or the Guide key. It is a 12-step tour drawn as service-manual callouts:
+  a numbered balloon and a short dog-leg leader line to the feature, following
+  [MIL-STD-38784](https://technicalmanualspecsstandards.emilspec.com/MIL-STD-38784/page43.html) practice.
+  A tour is offered on the first visit, never forced. [NN/g found](https://www.nngroup.com/articles/mobile-tutorials/)
+  that pushed tutorials can lower task success, so every step is skippable, keyboard-driven
+  (`←` `→` `Esc`) and shown once. The service-manual drawer also holds a per-screen tour, the
+  keyboard map and a glossary.
+- **Motion with a purpose.** Screens "power on" between routes, the waterfall writes itself top
+  to bottom, LED readouts count up, and the acquisition lamp blinks. All of it is switched off
+  under `prefers-reduced-motion`.
 
 ## How we know the method works
 

@@ -17,3 +17,18 @@ export const heatClass = (v: number | null | undefined) => {
 
 export const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 export const k = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n)));
+
+/** Canvas colours read from the CSS tokens, so charts follow the active theme. */
+export interface Palette { heat: string[]; well: string; ink: string; ink2: string; rule: string; hatch: string; bezel: string }
+
+export function readPalette(): Palette {
+  const cs = getComputedStyle(document.documentElement);
+  const v = (n: string) => cs.getPropertyValue(n).trim();
+  return {
+    heat: [0, 1, 2, 3, 4, 5, 6].map((i) => v(`--h${i}`)),
+    well: v("--well"), ink: v("--ink"), ink2: v("--ink-2"), rule: v("--rule"), hatch: v("--hatch"), bezel: v("--bezel"),
+  };
+}
+
+/** Bumps when the theme changes (toggle or OS setting), so canvases repaint with new tokens. */
+export const THEME_EVENT = "ctxprof:theme";

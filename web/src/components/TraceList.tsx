@@ -7,7 +7,7 @@ const FLAGS: { id: Flag; label: string }[] = [
   { id: "all", label: "all" }, { id: "profiled", label: "profiled" }, { id: "held", label: "held out" },
   { id: "poor", label: "poor fit" }, { id: "injection", label: "⚑ injection" },
 ];
-const PAGE = 50;
+const PAGE = 15;
 
 export function TraceList({ traces }: { traces: TraceRow[] }) {
   const [q, setQ] = useState("");

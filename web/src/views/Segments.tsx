@@ -1,17 +1,23 @@
 import { useState } from "react";
-import { api, type Aggregate, type SegmentAgg } from "../api";
+import { api, type Aggregate, type SegmentAgg, type Spectrum } from "../api";
 import { fmt, heatBin, heatClass, k } from "../heat";
 import { useLoad } from "../hooks";
+import { Strip } from "../components/Strip";
+import { Fault, Warmup } from "../components/Warmup";
+import { HeatKey } from "../components/HeatKey";
+import { stripsFrom } from "../spectrum";
 
 type SortKey = "paid" | "per1k" | "mean";
 const KINDS = ["all", "system", "tool", "retrieved", "history"] as const;
 const LABELS = ["all", "DEAD", "CRITICAL", "VOLATILE"] as const;
 const GLYPH: Record<string, string> = { DEAD: "□ DEAD", CRITICAL: "▲ CRITICAL", VOLATILE: "≈ VOLATILE" };
 
-async function load(): Promise<Aggregate | null> {
+async function load(): Promise<{ agg: Aggregate; spec: Spectrum | null } | null> {
   const runs = await api.runs();
   const run = runs.find((r) => r.status === "done" || r.status === "budget");
-  return run ? api.aggregate(run.id) : null;
+  if (!run) return null;
+  const [agg, spec] = await Promise.all([api.aggregate(run.id), api.spectrum(run.id).catch(() => null)]);
+  return { agg, spec };
 }
 
 export function Segments() {
@@ -20,12 +26,11 @@ export function Segments() {
   const [kind, setKind] = useState<(typeof KINDS)[number]>("all");
   const [label, setLabel] = useState<(typeof LABELS)[number]>("all");
 
-  if (s.state === "loading") return <main className="wrap"><p className="empty">Loading…</p></main>;
-  if (s.state === "error") return <main className="wrap"><div className="panel empty">{s.error}</div></main>;
-  if (!s.data) {
-    return <main className="wrap"><div className="panel empty">No profiling run yet. Run <code>ctxprof profile</code>.</div></main>;
-  }
-  const agg = s.data;
+  if (s.state === "loading") return <Warmup label="Aggregating fingerprints…" />;
+  if (s.state === "error") return <Fault>{s.error}</Fault>;
+  if (!s.data) return <Fault>No profiling run yet. Run <code>ctxprof profile</code>.</Fault>;
+  const { agg, spec } = s.data;
+  const strips = spec ? stripsFrom(spec) : null;
   const key = (x: SegmentAgg) => (sort === "paid" ? x.tokens_paid : sort === "per1k" ? x.influence_per_1k : x.mean_influence);
   const rows = agg.segments
     .filter((x) => (kind === "all" || x.kind === kind) && (label === "all" || x.label === label))
@@ -51,9 +56,10 @@ export function Segments() {
             {x === "all" ? "any label" : GLYPH[x]}</button>)}
         </div>
       </div>
-      <section className="panel" aria-labelledby="t-h">
+      <section className="panel" aria-labelledby="t-h" data-tour="seg-table">
         <div className="ph"><span className="n">03.1</span><h2 id="t-h">Fingerprints</h2>
-          <span className="dim" style={{ fontSize: 12.5 }}>DEAD = influence ≈ 0 in enough traces; VOLATILE segments are never auto-pruned</span></div>
+          <span className="dim" style={{ fontSize: 12.5 }}>DEAD = influence ≈ 0 in enough traces; VOLATILE segments are never auto-pruned</span>
+          <span style={{ marginLeft: "auto" }}><HeatKey /></span></div>
         <div className="tbox">
           <table>
             <caption className="sr">Segment fingerprints aggregated across traces</caption>
@@ -63,6 +69,7 @@ export function Segments() {
                 <th scope="col" className="r">Traces</th><th scope="col" className="r">Tok / req</th>
                 <th scope="col" className="r" aria-sort={aria("paid")}><button type="button" onClick={() => setSort("paid")}>Tokens paid ↓</button></th>
                 <th scope="col" aria-sort={aria("mean")}><button type="button" onClick={() => setSort("mean")}>Mean influence ↓</button></th>
+                <th scope="col">Influence in each request</th>
                 <th scope="col" className="r">σ</th>
                 <th scope="col" className="r" aria-sort={aria("per1k")}><button type="button" onClick={() => setSort("per1k")}>Infl / 1k tok ↓</button></th>
                 <th scope="col">Label</th>
@@ -79,6 +86,8 @@ export function Segments() {
                   <td className="r"><span className="paid"><i style={{ width: Math.max(2, (x.tokens_paid / maxPaid) * 90) }} aria-hidden="true" />{k(x.tokens_paid)}</span></td>
                   <td><i className={`sw ${heatClass(x.mean_influence)}`} style={{ marginRight: 8, verticalAlign: -2 }} aria-hidden="true" />
                     {x.mean_influence.toFixed(2)} <span className="dim">H{heatBin(x.mean_influence)}</span></td>
+                  <td className="striptd">{strips && <Strip values={strips.strips.get(x.fingerprint) ?? []} ids={strips.ids}
+                    label={`${x.fingerprint} influence per request`} />}</td>
                   <td className="r" style={{ color: "var(--ink-2)" }}>{x.sd_influence.toFixed(2)}</td>
                   <td className="r">{x.influence_per_1k.toFixed(2)}</td>
                   <td>{x.label && <span className={`chip ${x.label === "DEAD" ? "" : "solid"}`}>{GLYPH[x.label]}</span>}</td>

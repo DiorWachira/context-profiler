@@ -1,0 +1,28 @@
+CONTEXT PROFILER
+================
+
+Live site:   https://diorwachira.github.io/context-profiler/
+Source code: https://github.com/DiorWachira/context-profiler
+
+What it is
+----------
+Context Profiler is a flame graph for LLM prompts. It takes real requests sent to a language
+model, removes pieces of their context one combination at a time (system-prompt sections, tool
+definitions, retrieved documents, earlier turns), replays them, and measures how much the answer
+changes. A sparse statistical model (the ContextCite method) turns those experiments into an
+"influence" score for every piece, and the scores are aggregated across hundreds of requests.
+
+The result answers one question: which parts of your prompt are you paying for but not using?
+It labels each piece DEAD, VOLATILE or CRITICAL, flags untrusted text that steers the answer
+(a prompt-injection signal), then writes a ready-to-review diff that removes the dead weight.
+Before recommending the diff, it verifies it on requests it has never seen and reports the
+measured token and cost savings (in USD and KSh) and the share of answers that stayed the same.
+
+On the built-in JobBridge demo, cutting everything labelled DEAD would remove 54.6% of the
+tokens but breaks the answer for scam-related questions. Verification catches it, and the safe
+diff still cuts 50.9% of the tokens with 100% agreement.
+
+The site is a static snapshot of that demo, styled as a bench test instrument. It includes a
+guided tour for first-time visitors: press ? on any page to open it.
+
+Built by Dior Wachira, Nairobi. Python (FastAPI, scikit-learn), React + TypeScript.

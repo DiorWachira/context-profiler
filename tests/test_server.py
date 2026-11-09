@@ -36,6 +36,13 @@ def test_api_end_to_end(tmp_path):
     assert all((leaf["influence"] is None) == (leaf["kind"] == "user") for leaf in leaves)
     detail = client.get(f"/api/traces/{traces[0].id}").json()
     assert len(detail["ablations"]) == 16 and detail["fit"]["n_masks"] == 16
+    spec = client.get(f"/api/runs/{run_id}/spectrum").json()
+    assert [r[0] for r in spec["rows"]] == [t.id for t in traces]
+    first = spec["rows"][0]
+    assert first[1] == listed[0]["total_tokens"] == sum(seg[1] for seg in first[3])
+    assert all(seg[0] == sum(x[1] for x in first[3][:i]) for i, seg in enumerate(first[3]))
+    assert spec["kinds"][first[3][-1][4]] == "user" and first[3][-1][2] is None  # pinned: not scored
+    assert spec["max_tokens"] == max(r[1] for r in spec["rows"])
     agg = client.get(f"/api/runs/{run_id}/aggregate").json()
     assert agg["summary"]["traces"] == 4 and agg["segments"]
     assert client.get("/api/traces/nope").status_code == 404

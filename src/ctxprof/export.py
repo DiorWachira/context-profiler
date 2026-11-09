@@ -29,6 +29,7 @@ def export_static(db_path: str | Path, out_dir: str | Path) -> int:
 
     paths = ["/api/health", "/api/runs", "/api/traces", "/api/prunes"]
     paths += [f"/api/runs/{r}/aggregate" for r in run_ids]
+    paths += [f"/api/runs/{r}/spectrum" for r in run_ids]
     paths += [f"/api/prunes/{p}" for p in prune_ids]
     for t in trace_ids:
         paths += [f"/api/traces/{t}", f"/api/traces/{t}/flame"]
@@ -37,7 +38,7 @@ def export_static(db_path: str | Path, out_dir: str | Path) -> int:
     n = 0
     for path in paths:
         r = client.get(path)
-        if r.status_code == 404 and "/aggregate" in path:
+        if r.status_code == 404 and path.startswith("/api/runs/"):
             continue  # a run with no attributions
         r.raise_for_status()
         target = out / (path.lstrip("/") + ".json")

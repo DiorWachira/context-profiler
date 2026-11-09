@@ -255,7 +255,15 @@ D10 Colour means influence only. Status (DEAD/CRITICAL/VOLATILE/injection) is gl
   - Live-server tests for the OpenAI-compatible provider and the embedding metric (Ollama in CI).
 
 
-6. DESIGN SYSTEM ("Graticule")
+6. DESIGN SYSTEM ("Graticule", extended to "Bench" on 9 Nov 2026)
+  Bench layer (web/src/bench.css): instrument top plate + softkeys with LEDs, recessed screens with
+  graticules and corner screws, seven-segment readouts (components/Seg7.tsx), Fig. 1 waterfall
+  (components/Waterfall.tsx, data from GET /api/runs/{id}/spectrum), per-fingerprint strips
+  (components/Strip.tsx), annunciator lamps, window bar (Fig. 2 on Pruning), warm-up / fault /
+  no-signal states, serial-plate footer. Guide (web/src/guide/): opt-in tour of service-manual
+  callouts across screens, first-visit invite (localStorage ctxprof.guide.v1), "?" drawer with
+  per-screen tour, keys and glossary. README "The interface" section cites the references.
+
 ------------------------------
 Design canvas (Claude Design artifact, private): https://claude.ai/artifact/4YvZrWGN3bp9twR967EvAj
 Its source files (one .dc.html per artboard + canvas.json) are kept in design/canvas/ for reference.

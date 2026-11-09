@@ -82,6 +82,13 @@ def create_app(db_path: str | Path = "ctxprof.db", web_dist: Path | None = WEB_D
             "interactions": s.interactions(rid, trace_id) if rid else [],
         }
 
+    @app.get("/api/runs/{run_id}/spectrum")
+    def run_spectrum(run_id: int, s: Store = Depends(store)) -> dict[str, Any]:
+        spec = s.spectrum(run_id)
+        if not spec["rows"]:
+            raise HTTPException(404, f"run {run_id} has no profiled traces")
+        return spec
+
     @app.get("/api/runs/{run_id}/aggregate")
     def run_aggregate(run_id: int, s: Store = Depends(store)) -> dict[str, Any]:
         rows = s.run_rows(run_id)

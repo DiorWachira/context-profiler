@@ -347,6 +347,43 @@ class Store:
         r = self.conn.execute("SELECT id FROM prunes ORDER BY id DESC").fetchone()
         return int(r["id"]) if r else None
 
+    def spectrum(self, run_id: int) -> dict[str, Any]:
+        """Every profiled trace as a row of segments in window order (the waterfall's data).
+
+        Rows: ``[trace_id, total_tokens, poor_fit, [[offset, tokens, influence|None, fp_index, kind_index], ...]]``.
+        Compact on purpose: the UI draws ~200 rows x ~25 segments on a canvas.
+        """
+        from .models import KIND_ORDER
+
+        fits = {r["trace_id"]: bool(r["poor_fit"]) for r in self.conn.execute(
+            "SELECT trace_id, poor_fit FROM trace_fits WHERE run_id = ? ORDER BY trace_id", (run_id,))}
+        fps: dict[str, int] = {}
+        rows: list[tuple[str, int, bool, list[list[Any]]]] = []
+        cur = self.conn.execute(
+            "SELECT s.trace_id, s.idx, s.kind, s.fingerprint, s.tokens, a.influence FROM segments s "
+            "JOIN trace_fits f ON f.trace_id = s.trace_id AND f.run_id = ? "
+            "LEFT JOIN attributions a ON a.run_id = f.run_id AND a.trace_id = s.trace_id AND a.idx = s.idx "
+            "ORDER BY s.trace_id, s.idx", (run_id,))
+        current: str | None = None
+        segs: list[list[Any]] = []
+        offset = 0
+
+        def flush() -> None:
+            if current is not None:
+                rows.append((current, offset, fits.get(current, False), segs))
+
+        for r in cur:
+            if r["trace_id"] != current:
+                flush()
+                current, segs, offset = r["trace_id"], [], 0
+            fp = fps.setdefault(r["fingerprint"], len(fps))
+            infl = None if r["influence"] is None else round(float(r["influence"]), 3)
+            segs.append([offset, r["tokens"], infl, fp, KIND_ORDER.index(r["kind"])])
+            offset += r["tokens"]
+        flush()
+        return {"run": run_id, "kinds": list(KIND_ORDER), "fingerprints": list(fps),
+                "max_tokens": max((r[1] for r in rows), default=0), "rows": rows}
+
     # ---- model-call cache -------------------------------------------------
     def cache_get(self, key: str) -> dict[str, Any] | None:
         r = self.conn.execute("SELECT value_json FROM calls WHERE key = ?", (key,)).fetchone()

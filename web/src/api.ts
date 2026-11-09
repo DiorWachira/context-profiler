@@ -96,6 +96,13 @@ export interface PruneDetail extends PruneRow {
   verification: Verification | null; run: Run | null;
 }
 
+/** One profiled trace as a row: [offset, tokens, influence | null (pinned), fingerprint index, kind index]. */
+export type SpecSeg = [number, number, number | null, number, number];
+export interface Spectrum {
+  run: number; kinds: Kind[]; fingerprints: string[]; max_tokens: number;
+  rows: [string, number, boolean, SpecSeg[]][];
+}
+
 /** Static build (GitHub Pages): the API is a snapshot of JSON files written by `ctxprof export`. */
 export const STATIC = import.meta.env.VITE_STATIC === "1";
 
@@ -118,6 +125,7 @@ export const api = {
   flame: (id: string) => get<{ run: number | null; fit: Fit | null; tree: FlameNode }>(`/api/traces/${encodeURIComponent(id)}/flame`),
   trace: (id: string) => get<TraceDetail>(`/api/traces/${encodeURIComponent(id)}`),
   aggregate: (run: number) => get<Aggregate>(`/api/runs/${run}/aggregate`),
+  spectrum: (run: number) => get<Spectrum>(`/api/runs/${run}/spectrum`),
   prunes: () => get<PruneRow[]>("/api/prunes"),
   prune: (id: number) => get<PruneDetail>(`/api/prunes/${id}`),
 };

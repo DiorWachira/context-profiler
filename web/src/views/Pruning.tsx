@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, type Hunk, type PruneDetail, type PruneRow, type Resp, type VerifyRecord } from "../api";
+import { api, type Hunk, type PruneDetail, type PruneRow, type Resp, type Spectrum, type VerifyRecord } from "../api";
 import { fmt } from "../heat";
 import { useLoad } from "../hooks";
+import { Fault, Warmup } from "../components/Warmup";
+import { Strip } from "../components/Strip";
+import { stripsFrom } from "../spectrum";
 
 const RATE_KEY = "ctxprof.kshPerUsd";
 const PREVIEW_LINES = 6;
@@ -29,17 +32,19 @@ export function estimate(records: VerifyRecord[], sel: Set<string>) {
   return { n, regress, before, saved, after: before - saved, agreeN, agreement: n ? agreeN / n : 0 };
 }
 
-async function load(id: number | null): Promise<{ list: PruneRow[]; prune: PruneDetail | null }> {
+async function load(id: number | null): Promise<{ list: PruneRow[]; prune: PruneDetail | null; spec: Spectrum | null }> {
   const list = await api.prunes();
   const pick = id ?? list.find((p) => p.recommend)?.id ?? list[0]?.id ?? null;
-  return { list, prune: pick == null ? null : await api.prune(pick) };
+  const prune = pick == null ? null : await api.prune(pick);
+  const spec = prune ? await api.spectrum(prune.run_id).catch(() => null) : null;
+  return { list, prune, spec };
 }
 
 export function Pruning({ id }: { id: number | null }) {
   const s = useLoad(() => load(id), [id]);
-  if (s.state === "loading") return <main className="wrap"><p className="empty">Loading pruning report…</p></main>;
-  if (s.state === "error") return <main className="wrap"><div className="panel empty">{s.error}</div></main>;
-  const { list, prune } = s.data;
+  if (s.state === "loading") return <Warmup label="Loading the pruning report…" />;
+  if (s.state === "error") return <Fault>{s.error}</Fault>;
+  const { list, prune, spec } = s.data;
   if (!prune) {
     return (
       <main className="wrap"><div className="panel empty">
@@ -47,10 +52,11 @@ export function Pruning({ id }: { id: number | null }) {
       </div></main>
     );
   }
-  return <Report key={prune.id} prune={prune} list={list} />;
+  return <Report key={prune.id} prune={prune} list={list} spec={spec} />;
 }
 
-function Report({ prune, list }: { prune: PruneDetail; list: PruneRow[] }) {
+function Report({ prune, list, spec }: { prune: PruneDetail; list: PruneRow[]; spec: Spectrum | null }) {
+  const strips = useMemo(() => (spec ? stripsFrom(spec) : null), [spec]);
   const v = prune.verification;
   const cfg = v?.config;
   const price = cfg?.price_in_per_m ?? Number(prune.run?.config.price_in_per_m ?? 3);
@@ -71,6 +77,17 @@ function Report({ prune, list }: { prune: PruneDetail; list: PruneRow[] }) {
   const usd100k = saved * price / 1e6 * 1e5;
   const keepArgs = prune.hunks.filter((h) => !sel.has(h.fingerprint)).map((h) => ` --keep "${h.fingerprint}"`).join("");
 
+  // the hunk most often blamed by regressions or kept-hunk probes: where the guide points
+  const blame = new Map<string, number>();
+  for (const r of v?.records ?? []) for (const b of r.breaks) blame.set(b, (blame.get(b) ?? 0) + 1);
+  const suspect = [...blame.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? prune.hunks[0]?.fingerprint;
+  const lamps = [
+    { on: !!v && exact && pass, label: "VERIFIED" },
+    { on: !!v && !exact, label: "ESTIMATE" },
+    { on: !!v && !pass, label: "BELOW THR." },
+    { on: v?.status === "budget", label: "BUDGET" },
+    { on: !v, label: "UNVERIFIED" },
+  ];
   let stamp: string;
   if (!v) stamp = "○ UNVERIFIED · RUN ctxprof verify";
   else if (exact) stamp = pass ? "✓ VERIFIED · RECOMMEND" : "× BELOW THRESHOLD · DO NOT SHIP";
@@ -79,7 +96,10 @@ function Report({ prune, list }: { prune: PruneDetail; list: PruneRow[] }) {
   return (
     <main className="wrap">
       <section className="verdict" aria-labelledby="v-h">
-        <div>
+        <div data-tour="verdict">
+          <div className="annuns" aria-hidden="true">
+            {lamps.map((l) => <span key={l.label} className={`annun${l.on ? " on" : ""}${l.on && l.label !== "VERIFIED" ? " warn" : ""}`}>{l.label}</span>)}
+          </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
             <span className={`stamp${v && pass ? "" : " fail"}`} aria-live="polite">{stamp}</span>
             <span className="lbl">
@@ -94,6 +114,7 @@ function Report({ prune, list }: { prune: PruneDetail; list: PruneRow[] }) {
               {v ? "" : " once verified"}.
             </small>
           </h1>
+          {est && <WindowBar hunks={prune.hunks} sel={sel} records={v!.records} before={before} />}
           {list.length > 1 && (
             <nav className="group" aria-label="Pruning reports" style={{ marginTop: 14 }}>
               {[...list].sort((a, b) => a.id - b.id).map((p) => (
@@ -131,7 +152,8 @@ function Report({ prune, list }: { prune: PruneDetail; list: PruneRow[] }) {
             <span className="dim" style={{ fontSize: 12.5 }}>removed lines are hatched and struck, never coloured: colour belongs to influence</span></div>
           <div className="diff">
             {prune.hunks.map((h) => (
-              <HunkView key={h.fingerprint} h={h} cut={sel.has(h.fingerprint)}
+              <HunkView key={h.fingerprint} h={h} cut={sel.has(h.fingerprint)} tour={h.fingerprint === suspect}
+                strip={strips ? { values: strips.strips.get(h.fingerprint) ?? [], ids: strips.ids } : null}
                 toggle={() => setCut((c) => ({ ...c, [h.fingerprint]: !c[h.fingerprint] }))} />
             ))}
           </div>
@@ -149,16 +171,39 @@ $ ctxprof verify --threshold ${threshold}`}</pre>
   );
 }
 
-function HunkView({ h, cut, toggle }: { h: Hunk; cut: boolean; toggle: () => void }) {
+/** The average request's context window as a bar: each cut hunk is a struck, hatched block. */
+function WindowBar({ hunks, sel, records, before }: { hunks: Hunk[]; sel: Set<string>; records: VerifyRecord[]; before: number }) {
+  const n = Math.max(1, records.length);
+  const per = new Map<string, number>();
+  for (const r of records) for (const [fp, t] of Object.entries(r.removed_tokens)) per.set(fp, (per.get(fp) ?? 0) + t / n);
+  const cut = hunks.filter((h) => sel.has(h.fingerprint)).map((h) => ({ fp: h.fingerprint, t: per.get(h.fingerprint) ?? 0 }));
+  const saved = cut.reduce((a, c) => a + c.t, 0);
+  const pct = (t: number) => `${(t / Math.max(1, before)) * 100}%`;
+  return (
+    <figure className="winbar" aria-label={`Average context window: ${fmt(before)} tokens before, ${fmt(before - saved)} after`}>
+      <div className="wb-track">
+        <span className="wb-keep" style={{ width: pct(before - saved) }}><span className="mono">kept {fmt(before - saved)}</span></span>
+        {cut.map((c) => <span key={c.fp} className="wb-cut" style={{ width: pct(c.t) }} title={`${c.fp}: −${fmt(c.t)} tok`} />)}
+      </div>
+      <figcaption className="mono dim sm">FIG. 2 · average held-out request, {fmt(before)} tokens. Hatched = cut by the ticked hunks.</figcaption>
+    </figure>
+  );
+}
+
+function HunkView({ h, cut, toggle, tour, strip }: {
+  h: Hunk; cut: boolean; toggle: () => void; tour?: boolean;
+  strip: { values: (number | null | undefined)[]; ids: string[] } | null;
+}) {
   const [open, setOpen] = useState(false);
   const lines = open ? h.lines : h.lines.slice(0, PREVIEW_LINES);
   const long = h.lines.length > PREVIEW_LINES || h.lines.some((l) => l.text.length > 240);
   const id = `hunk-${h.fingerprint.replace(/[^a-z0-9]+/gi, "-")}`;
   return (
-    <div className={`hunk${cut ? "" : " kept"}${open ? " open" : ""}`}>
+    <div className={`hunk${cut ? "" : " kept"}${open ? " open" : ""}`} data-tour={tour ? "hunk" : undefined}>
       <div className="hh">
         <code>@@ {h.file} · {h.fingerprint} @@</code>
         <span className="htk mono dim">−{fmt(h.tokens_per_request)} tok/req · {h.reason}</span>
+        {strip && <Strip values={strip.values} ids={strip.ids} label={`${h.fingerprint} influence per profiled request`} width={120} height={12} />}
         <label className="keep"><input type="checkbox" checked={cut} onChange={toggle}
           aria-describedby={id} aria-label={`Cut ${h.fingerprint}`} />Cut</label>
       </div>
@@ -216,7 +261,7 @@ function Verification({ prune, est, sel }: { prune: PruneDetail; est: ReturnType
   const resolved = v.records.filter((r) => !r.agree && !bad.has(r.trace_id));
   const tok = (fps: string[]) => fmt(prune.hunks.filter((h) => fps.includes(h.fingerprint)).reduce((a, h) => a + h.tokens_per_request, 0));
   return (
-    <section className="panel" aria-labelledby="g-h">
+    <section className="panel" aria-labelledby="g-h" data-tour="grid">
       <div className="ph"><span className="n">05.3</span><h2 id="g-h">Verification · {v.records.length} held-out traces</h2>
         <span className="mono dim" style={{ marginLeft: "auto", fontSize: 11.5 }}>{v.provider} · score ≥ {v.config.min_score}</span></div>
       <div className="vgrid" role="img" aria-label={`${est.agreeN} of ${est.n} held-out traces kept the same outcome`}>

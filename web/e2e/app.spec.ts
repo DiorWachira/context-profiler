@@ -2,6 +2,13 @@ import { expect, test, type Page } from "@playwright/test";
 
 // Assumes the JobBridge demo: `ctxprof demo` (prune 1 = default, prune 2 = --keep report_listing).
 
+// Most tests are not about the guide: mark it as seen so its first-visit invitation stays away.
+test.beforeEach(async ({ page }, info) => {
+  if (!info.title.startsWith("guide")) {
+    await page.addInitScript(() => { try { localStorage.setItem("ctxprof.guide.v1", "1"); } catch { /* ignore */ } });
+  }
+});
+
 async function noOverflow(page: Page) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
@@ -12,7 +19,7 @@ test("overview -> trace -> keyboard zoom -> marker readout", async ({ page }) =>
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("./#/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("tokens in.");
-  await expect(page.getByText("Verified saving / 100k req")).toBeVisible();
+  await expect(page.getByText("Verified saving $ / 100k req")).toBeVisible();
 
   await page.getByRole("link", { name: "Open a flame graph" }).click();
   await expect(page).toHaveURL(/#\/trace\//);
@@ -41,7 +48,7 @@ test("segments table sorts by influence per 1k tokens", async ({ page }) => {
   await expect(page.locator("th[aria-sort=descending]")).toContainText("Tokens paid");
   await th.getByRole("button").click();
   await expect(th).toHaveAttribute("aria-sort", "descending");
-  const vals = await page.locator("tbody tr td:nth-child(9)").allInnerTexts();
+  const vals = await page.locator("tbody tr td:nth-child(10)").allInnerTexts();
   const nums = vals.map(Number);
   expect(nums).toEqual([...nums].sort((a, b) => b - a));
 });
@@ -99,7 +106,7 @@ test("prefers-reduced-motion disables the sweep", async ({ browser }) => {
 test("theme toggle switches and persists", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await page.goto("./#/");
-  await page.getByRole("button", { name: "Switch to light theme" }).click();
+  await page.getByRole("switch", { name: /Light panel/ }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
@@ -123,4 +130,75 @@ test("trace list filters and search", async ({ page }) => {
   await expect(count).toHaveText("1 of 260");
   await page.getByRole("link", { name: "t0014", exact: true }).click();
   await expect(page).toHaveURL(/#\/trace\/t0014$/);
+});
+
+test("waterfall: hover readout and click opens the request", async ({ page }) => {
+  await page.goto("./#/");
+  const screen = page.locator(".wf-screen");
+  await expect(screen).toBeVisible();
+  const box = (await screen.boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.3, box.y + 1);
+  const tip = page.locator(".wf-tip");
+  await expect(tip).toContainText("t0001");
+  await expect(tip).toContainText(/influence|pinned/);
+  await screen.focus();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/#\/trace\/t000[12]$/);
+});
+
+test("segments: every fingerprint has an influence strip", async ({ page }) => {
+  await page.goto("./#/segments");
+  const rows = page.locator("tbody tr");
+  await expect(rows.first()).toBeVisible();
+  await expect(page.locator("tbody .strip")).toHaveCount(await rows.count());
+  await expect(page.locator("tbody .strip").first()).toHaveAttribute("aria-label", /carried by \d+ of 200 traces/);
+});
+
+test("guide: first-visit invite, keyboard tour across screens, then never again", async ({ page }) => {
+  await page.goto("./#/");
+  const invite = page.getByRole("complementary").filter({ hasText: "First time on the bench?" });
+  await expect(invite).toBeVisible();
+  await invite.getByRole("button", { name: "Start the guide" }).click();
+  const card = page.getByRole("dialog");
+  await expect(card).toContainText("01 / 12");
+  await expect(card.getByRole("heading")).toHaveText("Every row is one request");
+  await expect(page.locator(".hole")).toBeVisible();
+  for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowRight");
+  await expect(card.getByRole("heading")).toHaveText("One request under the probe");
+  await expect(page).toHaveURL(/#\/trace\//);
+  await page.keyboard.press("ArrowLeft");
+  await expect(card.getByRole("heading")).toHaveText("Injection signal");
+  await expect(page).toHaveURL(/#\/$/);
+  await page.keyboard.press("Escape");
+  await expect(card).toHaveCount(0);
+  await page.reload();
+  await page.waitForTimeout(2000);
+  await expect(page.getByText("First time on the bench?")).toHaveCount(0);
+});
+
+test("guide: ? opens the service manual; this-screen tour stays on the page", async ({ page }) => {
+  await page.goto("./#/pruning/1");
+  await page.getByRole("button", { name: "Not now" }).click();
+  await page.keyboard.press("?");
+  const manual = page.getByRole("dialog", { name: "Service manual" });
+  await expect(manual).toBeVisible();
+  await expect(manual).toContainText("Agreement");
+  await manual.getByRole("button", { name: /This screen · 3 steps/ }).click();
+  const card = page.getByRole("dialog");
+  await expect(card.getByRole("heading")).toHaveText("The verdict");
+  await page.getByRole("button", { name: "Next →" }).click();
+  await expect(card.getByRole("heading")).toHaveText("Cut, or keep");
+  await expect(page.locator('[data-tour="hunk"]')).toContainText("tool/report_listing");
+  await page.getByRole("button", { name: "Next →" }).click();
+  await page.getByRole("button", { name: "Finish" }).click();
+  await expect(page).toHaveURL(/#\/pruning\/1$/);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("unknown route shows the no-signal screen", async ({ page }) => {
+  await page.goto("./#/oscilloscope");
+  await expect(page.getByText("NO SIGNAL")).toBeVisible();
+  await page.getByRole("link", { name: "Overview" }).first().click();
+  await expect(page.locator(".wf-screen")).toBeVisible();
 });

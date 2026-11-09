@@ -3,6 +3,7 @@ import { api, type FlameNode, type TraceDetail } from "../api";
 import { Flame } from "../components/Flame";
 import { fmt, heatBin, heatClass } from "../heat";
 import { useLoad } from "../hooks";
+import { Fault, Warmup } from "../components/Warmup";
 
 function findNode(n: FlameNode, id: string): FlameNode | null {
   if (n.id === id) return n;
@@ -23,8 +24,8 @@ export function TraceView({ id }: { id: string }) {
   const [sel, setSel] = useState<string | null>(null);
   const [mask, setMask] = useState(0);
 
-  if (s.state === "loading") return <main className="wrap"><p className="empty">Loading trace {id}…</p></main>;
-  if (s.state === "error") return <main className="wrap"><div className="panel empty">{s.error}</div></main>;
+  if (s.state === "loading") return <Warmup label={`Probing request ${id}…`} />;
+  if (s.state === "error") return <Fault>{s.error}</Fault>;
   const [{ tree, fit }, detail] = s.data;
   const selected = sel ?? defaultSelection(tree);
   const node = findNode(tree, selected) ?? tree;
@@ -85,7 +86,7 @@ function DrillDown({ detail, mask, setMask }: { detail: TraceDetail; mask: numbe
   const cur = ab[mask];
   return (
     <div className="cols">
-      <section className="panel main" aria-labelledby="ab-h">
+      <section className="panel main" aria-labelledby="ab-h" data-tour="raster">
         <div className="ph"><span className="n">04.1</span><h2 id="ab-h">Ablation raster</h2>
           <span className="dim" style={{ fontSize: 12.5 }}>{ab.length} masks × {detail.segments.length} segments | filled = kept, outlined = removed, grey = pinned</span></div>
         {ab.length === 0 ? <p className="empty">Not profiled yet. Run <code>ctxprof profile</code>.</p> : (

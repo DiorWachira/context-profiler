@@ -7,6 +7,9 @@
   --h0: #2c4d7d; --h1: #366794; --h2: #49829f; --h3: #7a9997; --h4: #dd9b5f; --h5: #ffb45b; --h6: #ffe183;
   --t0: #eef0f2; --t1: #eef0f2; --t2: #0e1013; --t3: #0e1013; --t4: #0e1013; --t5: #0e1013; --t6: #0e1013;
   --hatch: rgba(230, 232, 235, 0.16); --veil: rgba(15, 17, 20, 0.62);
+  --plate: #181b20; --plate-2: #1e2228; --screen: #0b0d10; --grat: rgba(230, 232, 235, 0.055); --grat-2: rgba(230, 232, 235, 0.11);
+  --screw: #2e333b; --seg-off: rgba(230, 232, 235, 0.07); --lamp-off: #23272d; --veil-strong: rgba(6, 7, 9, 0.76);
+  --perf: rgba(230, 232, 235, 0.07); --grain-o: 0.05;
   color-scheme: dark;
 }
 @media (prefers-color-scheme: light) {
@@ -16,6 +19,9 @@
     --h0: #86a6cf; --h1: #6494c1; --h2: #4a84a1; --h3: #52706d; --h4: #864100; --h5: #782200; --h6: #5b1001;
     --t0: #0e1013; --t1: #0e1013; --t2: #0e1013; --t3: #fff; --t4: #fff; --t5: #fff; --t6: #fff;
     --hatch: rgba(17, 19, 23, 0.14); --veil: rgba(232, 233, 234, 0.68);
+    --plate: #cfd2d6; --plate-2: #c5c9ce; --screen: #f5f6f6; --grat: rgba(17, 19, 23, 0.05); --grat-2: rgba(17, 19, 23, 0.1);
+    --screw: #aeb3ba; --seg-off: rgba(17, 19, 23, 0.07); --lamp-off: #c4c8cd; --veil-strong: rgba(24, 26, 30, 0.58);
+    --perf: rgba(17, 19, 23, 0.09); --grain-o: 0.07;
     color-scheme: light;
   }
 }
@@ -25,6 +31,9 @@
   --h0: #86a6cf; --h1: #6494c1; --h2: #4a84a1; --h3: #52706d; --h4: #864100; --h5: #782200; --h6: #5b1001;
   --t0: #0e1013; --t1: #0e1013; --t2: #0e1013; --t3: #fff; --t4: #fff; --t5: #fff; --t6: #fff;
   --hatch: rgba(17, 19, 23, 0.14); --veil: rgba(232, 233, 234, 0.68);
+  --plate: #cfd2d6; --plate-2: #c5c9ce; --screen: #f5f6f6; --grat: rgba(17, 19, 23, 0.05); --grat-2: rgba(17, 19, 23, 0.1);
+  --screw: #aeb3ba; --seg-off: rgba(17, 19, 23, 0.07); --lamp-off: #c4c8cd; --veil-strong: rgba(24, 26, 30, 0.58);
+  --perf: rgba(17, 19, 23, 0.09); --grain-o: 0.07;
   color-scheme: light;
 }
 
@@ -52,18 +61,7 @@ a { color: inherit; }
 .hn { background-color: var(--well); color: var(--ink-2);
   background-image: repeating-linear-gradient(135deg, var(--hatch) 0 1px, transparent 1px 6px); }
 
-/* chrome */
-.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px; padding: 8px 20px;
-  border-bottom: 1px solid var(--rule); background: var(--bezel); }
-.brand { display: flex; gap: 10px; align-items: center; min-height: 44px; text-decoration: none; }
-.brand b { font-stretch: 62%; font-weight: 900; font-size: 21px; letter-spacing: .05em; text-transform: uppercase; }
-.nav { display: flex; flex-wrap: wrap; gap: 2px; }
-.nav a { font-stretch: 72%; font-weight: 600; font-size: 13px; letter-spacing: .07em; text-transform: uppercase;
-  text-decoration: none; color: var(--ink-2); padding: 0 10px; border: 1px solid transparent; border-radius: 2px;
-  min-height: 44px; display: inline-flex; align-items: center; }
-.nav a:hover { color: var(--ink); border-color: var(--rule-2); }
-.nav a[aria-current="page"] { color: var(--ink); border-color: var(--ink); }
-.runid { margin-left: auto; font-size: 12px; color: var(--ink-2); }
+/* chrome: see BENCH below */
 .wrap { max-width: 1400px; margin: 0 auto; padding: 20px 20px 56px; display: flex; flex-direction: column; gap: 16px; }
 .title { margin: 0; font-stretch: 125%; font-weight: 800; letter-spacing: -.02em; font-size: clamp(26px, 3vw, 40px); line-height: 1; }
 .hd { margin: 10px 0 14px; font-stretch: 125%; font-weight: 800; letter-spacing: -.025em; line-height: .95;
@@ -248,7 +246,6 @@ pre.cmd { margin: 0; padding: 12px 14px; font-family: "Spline Sans Mono", monosp
   font-stretch: 72%; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; font-size: 12px; }
 .skipped .list li { grid-template-columns: 14px minmax(0, 1fr); }
 .skipped .list li > span.sm { grid-column: 2; }
-.theme { margin-left: 8px; }
 .filters { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-end; padding: 12px 14px; border-bottom: 1px solid var(--rule); }
 .search { display: flex; flex-direction: column; gap: 4px; }
 .search input { font: inherit; font-family: "Spline Sans Mono", monospace; min-height: 44px; width: 160px; padding: 0 10px; color: var(--ink);
@@ -269,5 +266,5 @@ pre.cmd { margin: 0; padding: 12px 14px; font-family: "Spline Sans Mono", monosp
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 @media (max-width: 560px) {
-  .runid { margin-left: 0; } .wrap { padding: 16px 16px 40px; } .keys { display: none; } .frow { height: 30px; }
+  .wrap { padding: 16px 16px 40px; } .keys { display: none; } .frow { height: 30px; }
 }
