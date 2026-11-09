@@ -1,6 +1,6 @@
 CONTEXT PROFILER — ROADMAP AND HAND-OFF
 =======================================
-Last updated: 9 Nov 2026. Owner: Dior Wachira.
+Last updated: 9 Nov 2026 (M4, M5, deployment). Owner: Dior Wachira.
 Read this file first when resuming (e.g. Claude Code in the VS Code terminal). It says what
 exists, why it was built this way, how to run and check it, and exactly what to build next.
 
@@ -8,19 +8,22 @@ exists, why it was built this way, how to run and check it, and exactly what to 
 0. HOW TO RESUME IN 60 SECONDS
 ------------------------------
   cd "C:\dev\Context Profiler"
-  .venv\Scripts\python -m pytest -q          # must be green (17 tests) before you change anything
-  .venv\Scripts\ctxprof demo                 # rebuilds ctxprof.db: 200 traces, profiled (~75 s)
+  .venv\Scripts\python -m pytest -q          # must be green before you change anything (slow tests excluded)
+  .venv\Scripts\ctxprof demo                 # rebuilds ctxprof.db: 260 traces, profile 200, prune + verify (~75 s)
   .venv\Scripts\ctxprof aggregate            # the ranked fingerprint table
   cd web && npm run build && cd ..
   .venv\Scripts\ctxprof serve                # http://127.0.0.1:8000
 
   If .venv is missing:   py -3.12 -m venv .venv
-                         .venv\Scripts\python -m pip install -e ".[dev]"
-  If web/node_modules is missing:   cd web && npm install
+                         .venv\Scripts\python -m pip install -e ".[dev]"      (add ,local for the hf provider)
+  If web/node_modules is missing:   cd web && npm install && npx playwright install chromium
+
+  Repo:  https://github.com/DiorWachira/context-profiler   (public; CI on every push)
+  Live:  https://diorwachira.github.io/context-profiler/     (static snapshot, deployed by CI)
 
   Suggested opening prompt for Claude Code:
-    "Read roadmap.txt and README.md. Run the tests. Then start milestone M4 (section 5),
-     plan first, keep tests green, don't commit until I say so."
+    "Read roadmap.txt and README.md. Run the tests. Then pick the next item in section 5.8,
+     plan first, keep tests green."
 
 
 1. WHAT THIS IS
@@ -44,33 +47,28 @@ Non-goal: no real-time production proxy.
 Milestones from the spec, and where each stands:
 
   M1 Trace importer, segmenter, token counting, flame graph of tokens .......... DONE
-  M2 Attribution engine + synthetic ground-truth tests ......................... DONE (fake model)
-       - logprob mode against a REAL local model ................................ NOT DONE (see 5.2)
+  M2 Attribution engine + synthetic ground-truth tests ......................... DONE
+       - logprob mode against a REAL local model (hf provider, Qwen2.5-0.5B) .... DONE
   M3 Black-box mode, aggregation, DEAD/CRITICAL/VOLATILE labels ................ DONE
-       - injection signal (spec lists it under M4) .............................. DONE
-  M4 Pruning diff + verification + cost report ................................. DONE (9 Nov)
-  M5 Case study, README method/limitations, mode comparison .................... README drafted
+       - injection signal; embedding metric ..................................... DONE
+  M4 Pruning diff + verification + cost report + Pruning page .................. DONE
+  M5 Case study (real model), README method/limitations, mode comparison ...... DONE (README)
+  Deployment: GitHub Pages static snapshot + Docker image, both built by CI ..... DONE
 
 Verified on 9 Nov 2026:
-  - pytest: 17 passed. ruff: clean.
-  - web: `npm run build` (tsc + vite) clean. UI loads; no console errors; no horizontal
-    overflow at 375 px on Overview, Segments and Trace pages (checked in the browser pane).
-  - Demo run (fake model, 200 traces, 32 masks, logprob mode, heuristic tokens):
-      mean request 4,376 tokens; 33 fingerprints; 18 DEAD; DEAD = 2,425 tokens/request on
-      average (55% of the window); held-out R² high (0 poor-fit traces); 6,597 model calls,
-      estimated spend $48.63 at $3/M input (fake model costs nothing; the estimate is what a
-      hosted model would cost); 8 injection signals, all on the scam traces' injected listing.
-    These are fake-model numbers. They prove the pipeline, not real-world savings.
-  - Known demo finding that M4 MUST handle: tool/report_listing and tool/schedule_interview are
-    needed in a few % of traces. report_listing comes out DEAD (sd 0.10 < 0.15), schedule_interview
-    comes out VOLATILE. Verification on held-out traces is what catches report_listing.
+  - pytest: 37 passed (+3 slow real-model / tiktoken tests with -m slow). ruff and mypy: clean.
+  - web: typecheck + build clean; Playwright e2e (8 tests) green against the static build.
+  - Screenshots reviewed in dark, light and 375/390 px (no horizontal overflow on any screen).
+  - Demo (fake model): 200 profiled + 60 held-out traces. Default diff 4,380 -> 1,987 tokens
+    (-54.6%) but 90.0% agreement (6 scam regressions, suspect tool/report_listing): rejected.
+    With --keep tool/report_listing: 4,380 -> 2,150 (-50.9%), 100% agreement: recommended,
+    $669.03 / KSh 86,305 saved per 100k requests at $3/M input.
+  - Real-model case study: examples/case_study/results.json, summarised in README.
+  - CI: ruff, mypy, pytest, web typecheck/build/e2e, Docker build + smoke test, Pages deploy.
 
-NOT verified:
-  - No real model has been run (no Ollama / vLLM / hosted API calls yet).
-  - tiktoken counter is wired but untested (optional dependency, needs a download).
-  - OpenAICompatProvider is untested against a live server (no test with httpx MockTransport yet).
-  - The UI has not been screenshot-reviewed in light mode or on a phone; only DOM/overflow checks.
-  - No git repo yet (see section 8).
+Still NOT verified:
+  - OpenAICompatProvider against a live server (MockTransport tests only; no Ollama here).
+  - The embedding metric against a live embedding endpoint (MockTransport tests only).
 
 
 3. ARCHITECTURE AND FILE MAP
@@ -94,7 +92,9 @@ Frontend: React 18 + Vite 6 + TypeScript 5.6, no UI libraries.
                      development status: change only that table when they move.
     providers/       base.py (async Provider: generate, optional target_logprob),
                      fake.py (FakeProvider: deterministic ground-truth model built from Effects),
-                     openai_compat.py (any OpenAI-compatible chat endpoint; black-box mode only).
+                     openai_compat.py (any OpenAI-compatible chat endpoint; black-box mode only),
+                     hf_local.py (local transformers model: exact teacher-forced logprobs + generation),
+                     embeddings.py (OpenAI-compatible /embeddings, cached; metric "embedding").
     scoring.py       logprob -> logit score; black-box metrics: char-3-gram cosine text similarity,
                      tool-call agreement, JSON field agreement, "auto".
     surrogate.py     fit_surrogate(): LassoCV (alpha by CV) on a train split -> held-out R²; refit on
@@ -109,8 +109,12 @@ Frontend: React 18 + Vite 6 + TypeScript 5.6, no UI libraries.
                      pinned), ablations, calls (the cache). Store class.
     server.py        FastAPI: /api/health, /api/runs, /api/traces, /api/traces/{id},
                      /api/traces/{id}/flame, /api/runs/{id}/aggregate. Serves web/dist at /.
-    cli.py           ctxprof import | profile | aggregate | flame | prune* | verify* | serve | demo
-                     (* = M4 stubs that exit with code 2).
+    prune.py         Bundle (system.md / tools.json / retriever.yaml), build_plan(): DEAD -> hunks,
+                     safety rules, --keep, unified diff, pruned bundle.
+    verify.py        held-out choice, original vs pruned replays, regression suspects (single-hunk
+                     restore), kept-hunk probes, summarise() = the estimator the UI mirrors.
+    export.py        static JSON snapshot of every API route the UI reads (GitHub Pages).
+    cli.py           ctxprof import | profile | aggregate | flame | prune | verify | export | serve | demo
     demo.py          The bloated JobBridge support agent: ~2,000-token system prompt (9 sections),
                      12 tools, KB + employer listings (some with an injected "registration fee"),
                      200 traces in English and Sheng, and demo_effects() = the ground truth.
@@ -123,7 +127,13 @@ Frontend: React 18 + Vite 6 + TypeScript 5.6, no UI libraries.
     views/Overview.tsx     Run summary, DEAD list, top influence/1k, injection signals, trace list.
     views/Segments.tsx     Aggregated table, sortable (tokens paid / mean / per 1k), kind/label filters.
     views/TraceView.tsx    Flame + selected rail + drill-down (ablation raster, original response,
-                           surrogate weights with CI).
+                           surrogate weights with CI, pairwise interaction check).
+    views/Pruning.tsx      Verdict stamp, ledger (USD + KSh at a configurable rate), diff with per-hunk
+                           Cut toggles (estimate mirrors verify.summarise), held-out grid, budget.
+    components/TraceList.tsx   Trace search + intent/status filters.
+  web/e2e/           Playwright suite (runs against the static build: VITE_STATIC=1 + ctxprof export).
+  examples/case_study.py   Real-model case study (hf provider); results in examples/case_study/.
+  .github/workflows/ci.yml  CI + Pages deploy.  Dockerfile: API + UI with the demo pre-profiled.
     api.ts / heat.ts / hooks.ts   Typed API client, influence->heat bins, a tiny loader hook.
   examples/demo/     Generated by `ctxprof demo` (git-ignored): traces.jsonl, segmenter.yaml,
                      prompt/system.md, prompt/tools.json (the prompt bundle M4 will diff).
@@ -189,7 +199,7 @@ D10 Colour means influence only. Status (DEAD/CRITICAL/VOLATILE/injection) is gl
      the held-out grid (agree cells filled, regressions hollow with ×), budget meter.
      Done when: page works at 375 px, keyboard-only, reduced motion; build clean.
 
-5.2 M2 completion — logprob mode on a real local model
+5.2 M2 completion — logprob mode on a real local model   DONE (hf provider; vLLM not needed)
   - Add a provider that returns teacher-forced log-probabilities of a target response. Options to
     investigate (verify against current docs before building): vLLM's OpenAI-compatible server
     (completions with echo/prompt logprobs), llama.cpp server, or Hugging Face transformers run
@@ -199,11 +209,11 @@ D10 Colour means influence only. Status (DEAD/CRITICAL/VOLATILE/injection) is gl
   Done when: `ctxprof profile --provider vllm --mode logprob` runs on 5 demo-like traces against a
   real model and the README compares logprob vs black-box rankings (Spearman, top-5 overlap).
 
-5.3 Black-box with embeddings
+5.3 Black-box with embeddings   DONE
   - Add an Embedder protocol (OpenAI-compatible /embeddings) and metric "embedding" (cosine).
   - Add OpenAICompatProvider tests with httpx.MockTransport (payload shape, tool calls, errors).
 
-5.4 Engine quality
+5.4 Engine quality   DONE except sub-segments (see 5.8)
   - Concurrency across traces (today traces run sequentially; masks within a trace are concurrent).
   - Optional pairwise-interaction check: for top segments, report whether removing two together
     differs from the sum of removing each (flags non-linear traces beyond R²).
@@ -212,7 +222,7 @@ D10 Colour means influence only. Status (DEAD/CRITICAL/VOLATILE/injection) is gl
   - Sub-segments (tool description / parameters / examples; listing title / body) as depth-3
     nodes in the flame graph (model has a `parent` field reserved; flame.py supports children).
 
-5.5 UI polish and tests
+5.5 UI polish and tests   DONE
   - Theme toggle button (sets <html data-theme>), persisted in localStorage (try/catch).
   - Trace list filters (intent from meta, poor fit, injection) and search by trace id.
   - Playwright e2e: overview -> trace -> zoom with keyboard -> marker readout; segments sort;
@@ -222,7 +232,7 @@ D10 Colour means influence only. Status (DEAD/CRITICAL/VOLATILE/injection) is gl
     lightness, adjacent ΔL >= 0.06, end contrast >= 2:1, bar label text >= 4.5:1). The "single
     hue" check fails on purpose (cool->hot was the brief). Re-validate if you change a step.
 
-5.6 M5 — Case study
+5.6 M5 — Case study   DONE on the demo prompt with a real model (Dior's own prompt: 5.8)
   - Run on the demo AND one of Dior's real prompts (e.g. RepoLens Examiner or JobBridge
     explanations) with a real model; report real numbers: token reduction, cost, agreement,
     regressions; method, limitations (interactions, cost ~N×, linearity), logprob vs black-box.
@@ -231,9 +241,20 @@ D10 Colour means influence only. Status (DEAD/CRITICAL/VOLATILE/injection) is gl
     savings and a verification pass rate (M4), (3) a full run respects its budget cap and is
     reproducible from cache (DONE: test_cache_makes_rerun_free_and_budget_caps_spend).
 
-5.7 Engineering hygiene
+5.7 Engineering hygiene   DONE (git, CI, mypy, Docker, Pages)
   - git init + first commit (section 8), GitHub Actions: ruff, pytest, web typecheck + build.
   - mypy (or pyright) on src/.
+
+
+5.8 OPEN (not started; nice-to-have, in priority order)
+  - Run the case study on one of Dior's real prompts (RepoLens Examiner, JobBridge explanations)
+    with real traces and a larger model (GPU or hosted API); CPU + 0.5B is enough to prove the
+    method, not to quote savings for a product.
+  - Sub-segments (tool description / parameters; listing title / body) as depth-3 flame nodes.
+    Needs a Locator for tool parts, apply_mask support, and a rule for pruning a whole tool when
+    all its parts are DEAD.
+  - A vLLM / llama.cpp logprob provider for faster real-model runs (prompt_logprobs / echo).
+  - Live-server tests for the OpenAI-compatible provider and the embedding metric (Ollama in CI).
 
 
 6. DESIGN SYSTEM ("Graticule")
@@ -272,14 +293,13 @@ M1/M2 delta markers, a detail rail.
     existing global git identity. Commit/push only when Dior asks.
 
 
-8. NOT YET DONE ON THIS MACHINE
--------------------------------
-  - The folder is not a git repository. When ready:
-      git init -b main
-      git add .
-      git commit -m "Context Profiler: M1-M3 engine, API and flame graph UI"
+8. MACHINE NOTES
+----------------
   - .claude/launch.json defines a "ctxprof" preview config for the Claude desktop app's browser
     pane (runs `ctxprof serve --port 8000`).
+  - The hf provider caches Qwen/Qwen2.5-0.5B-Instruct under ~/.cache/huggingface (about 1 GB).
+    On this CPU a 3.4k-token forward pass takes ~15-30 s; the case study took a few hours.
+  - Docker Desktop must be running for local `docker build`; CI builds and smoke-tests the image.
 
 
 9. GLOSSARY
