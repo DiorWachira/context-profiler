@@ -106,3 +106,21 @@ test("theme toggle switches and persists", async ({ page }) => {
   const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
   expect(bg).toBe("rgb(220, 222, 225)");
 });
+
+test("trace list filters and search", async ({ page }) => {
+  await page.goto("./#/");
+  const count = page.locator("#tr-h ~ span");
+  await expect(count).toHaveText("260 of 260");
+  await page.getByRole("group", { name: "Filter by status" }).getByRole("button", { name: "held out" }).click();
+  await expect(count).toHaveText("60 of 260");
+  await page.getByRole("group", { name: "Filter by status" }).getByRole("button", { name: "⚑ injection" }).click();
+  await expect(count).toHaveText("8 of 260");
+  await page.getByRole("group", { name: "Filter by intent" }).getByRole("button", { name: "status" }).click();
+  await expect(page.getByText("No trace matches these filters.")).toBeVisible();
+  await page.getByRole("group", { name: "Filter by status" }).getByRole("button", { name: "all" }).click();
+  await page.getByRole("group", { name: "Filter by intent" }).getByRole("button", { name: "all" }).click();
+  await page.getByRole("searchbox").fill("t0014");
+  await expect(count).toHaveText("1 of 260");
+  await page.getByRole("link", { name: "t0014", exact: true }).click();
+  await expect(page).toHaveURL(/#\/trace\/t0014$/);
+});

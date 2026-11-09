@@ -3,7 +3,7 @@
 #   docker run --rm -p 8000:8000 ctxprof            # http://localhost:8000
 # Mount your own database instead: -v "$PWD/ctxprof.db:/data/ctxprof.db"
 
-FROM node:20-slim AS web
+FROM node:22-slim AS web
 WORKDIR /web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci --ignore-scripts

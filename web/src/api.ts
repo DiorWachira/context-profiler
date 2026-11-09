@@ -27,7 +27,10 @@ export interface Fit {
   poor_fit: number;
 }
 
-export interface TraceRow { id: string; model: string; total_tokens: number; n_segments: number; }
+export interface TraceRow {
+  id: string; model: string; total_tokens: number; n_segments: number; intent: string | null;
+  profiled: boolean; poor_fit: boolean; injection: boolean;
+}
 
 export interface Run {
   id: number; created_at: number; status: string; spent_usd: number; calls: number; cache_hits: number;

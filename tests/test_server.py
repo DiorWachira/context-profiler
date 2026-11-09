@@ -22,6 +22,7 @@ def test_api_end_to_end(tmp_path):
     assert client.get("/api/health").json() == {"status": "ok"}
     listed = client.get("/api/traces").json()
     assert [t["id"] for t in listed] == [t.id for t in traces]
+    assert listed[0]["intent"] == traces[0].meta["intent"] and listed[0]["profiled"] is False
     flame = client.get(f"/api/traces/{traces[0].id}/flame").json()
     assert flame["run"] is None and flame["tree"]["tokens"] == listed[0]["total_tokens"]
     assert [c["kind"] for c in flame["tree"]["children"]][:2] == ["system", "tool"]

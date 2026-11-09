@@ -148,10 +148,21 @@ class Store:
 
     def list_traces(self) -> list[dict[str, Any]]:
         rows = self.conn.execute(
-            "SELECT t.id, t.model, t.total_tokens, COUNT(s.idx) AS n_segments FROM traces t "
+            "SELECT t.id, t.model, t.total_tokens, t.meta_json, COUNT(s.idx) AS n_segments FROM traces t "
             "LEFT JOIN segments s ON s.trace_id = t.id GROUP BY t.id ORDER BY t.id"
         )
-        return [dict(r) for r in rows]
+        out = []
+        for r in rows:
+            d = dict(r)
+            meta = json.loads(d.pop("meta_json") or "{}")
+            d["intent"] = meta.get("intent")
+            out.append(d)
+        return out
+
+    def poor_fit_ids(self, run_id: int) -> dict[str, bool]:
+        """trace id -> poor fit, for every trace the run profiled."""
+        rows = self.conn.execute("SELECT trace_id, poor_fit FROM trace_fits WHERE run_id = ?", (run_id,))
+        return {r["trace_id"]: bool(r["poor_fit"]) for r in rows}
 
     def load_trace(self, trace_id: str) -> tuple[Trace, list[Segment]]:
         row = self.conn.execute("SELECT * FROM traces WHERE id = ?", (trace_id,)).fetchone()

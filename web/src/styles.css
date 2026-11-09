@@ -249,6 +249,11 @@ pre.cmd { margin: 0; padding: 12px 14px; font-family: "Spline Sans Mono", monosp
 .skipped .list li { grid-template-columns: 14px minmax(0, 1fr); }
 .skipped .list li > span.sm { grid-column: 2; }
 .theme { margin-left: 8px; }
+.filters { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-end; padding: 12px 14px; border-bottom: 1px solid var(--rule); }
+.search { display: flex; flex-direction: column; gap: 4px; }
+.search input { font: inherit; font-family: "Spline Sans Mono", monospace; min-height: 44px; width: 160px; padding: 0 10px; color: var(--ink);
+  background: var(--well); border: 1px solid var(--rule-2); border-radius: 2px; }
+.search input:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
 .list.ix li { grid-template-columns: 14px minmax(0, 1fr) auto; }
 .list.ix .fp { white-space: normal; overflow-wrap: anywhere; }
 @media (max-width: 1000px) { .verdict, .split { grid-template-columns: minmax(0, 1fr); } }

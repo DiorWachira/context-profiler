@@ -1,6 +1,7 @@
 import { api, type Aggregate, type PruneRow, type Run, type TraceRow } from "../api";
 import { fmt, heatClass, k } from "../heat";
 import { useLoad } from "../hooks";
+import { TraceList } from "../components/TraceList";
 
 async function load(): Promise<{ traces: TraceRow[]; run: Run | null; agg: Aggregate | null; prune: PruneRow | null }> {
   const [traces, runs, prunes] = await Promise.all([api.traces(), api.runs(), api.prunes().catch(() => [])]);
@@ -113,25 +114,7 @@ export function Overview() {
         </div>
       )}
 
-      <section className="panel" aria-labelledby="tr-h">
-        <div className="ph"><span className="n">05</span><h2 id="tr-h">Traces</h2>
-          <span className="mono dim" style={{ marginLeft: "auto", fontSize: 11.5 }}>{traces.length} imported</span></div>
-        <div className="tbox">
-          <table>
-            <thead><tr><th scope="col">Trace</th><th scope="col">Model</th><th scope="col" className="r">Segments</th>
-              <th scope="col" className="r">Tokens</th></tr></thead>
-            <tbody>
-              {traces.slice(0, 50).map((t) => (
-                <tr key={t.id}>
-                  <td><a href={`#/trace/${encodeURIComponent(t.id)}`}>{t.id}</a></td>
-                  <td style={{ color: "var(--ink-2)" }}>{t.model}</td>
-                  <td className="r">{t.n_segments}</td><td className="r">{fmt(t.total_tokens)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <TraceList traces={traces} />
     </main>
   );
 }

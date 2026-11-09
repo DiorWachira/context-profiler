@@ -41,7 +41,16 @@ def create_app(db_path: str | Path = "ctxprof.db", web_dist: Path | None = WEB_D
 
     @app.get("/api/traces")
     def traces(s: Store = Depends(store)) -> list[dict[str, Any]]:
-        return s.list_traces()
+        """Every trace, with flags from the latest run: profiled, poor fit, injection signal."""
+        rows = s.list_traces()
+        rid = s.latest_run_id()
+        fits = s.poor_fit_ids(rid) if rid is not None else {}
+        flagged = {h["trace_id"] for h in injection_signals(s.run_rows(rid))} if rid is not None else set()
+        for r in rows:
+            r["profiled"] = r["id"] in fits
+            r["poor_fit"] = fits.get(r["id"], False)
+            r["injection"] = r["id"] in flagged
+        return rows
 
     @app.get("/api/traces/{trace_id}/flame")
     def trace_flame(trace_id: str, run: int | None = None, s: Store = Depends(store)) -> dict[str, Any]:
