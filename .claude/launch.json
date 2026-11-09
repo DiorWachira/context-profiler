@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ctxprof",
+      "runtimeExecutable": ".venv/Scripts/ctxprof.exe",
+      "runtimeArgs": ["serve", "--port", "8000"],
+      "port": 8000
+    }
+  ]
+}

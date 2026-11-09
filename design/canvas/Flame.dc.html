@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Context Profiler · Flame graph</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&amp;family=Spline+Sans+Mono:wght@300..700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0f1114}
+a{color:inherit}a:hover{color:inherit}
+.cpw{container-type:inline-size}
+.cp{--chassis:#0f1114;--bezel:#14161a;--well:#1a1d22;--rule:#272b32;--rule-2:#3a3f48;--ink:#e6e8eb;--ink-2:#a9afb8;--ink-3:#8a919b;--h0:#2c4d7d;--h1:#366794;--h2:#49829f;--h3:#7a9997;--h4:#dd9b5f;--h5:#ffb45b;--h6:#ffe183;--t0:#eef0f2;--t1:#eef0f2;--t2:#0e1013;--t3:#0e1013;--t4:#0e1013;--t5:#0e1013;--t6:#0e1013;--hatch:rgba(230,232,235,.16);--veil:rgba(15,17,20,.62);font-family:'Archivo',system-ui,sans-serif;font-stretch:100%;background:var(--chassis);color:var(--ink);font-size:14px;line-height:1.45;min-height:100vh;box-sizing:border-box}
+.cp[data-theme="light"]{--chassis:#dcdee1;--bezel:#e8e9ea;--well:#f3f4f4;--rule:#c6c9ce;--rule-2:#a3a8b0;--ink:#111317;--ink-2:#3f444c;--ink-3:#555b64;--h0:#86a6cf;--h1:#6494c1;--h2:#4a84a1;--h3:#52706d;--h4:#864100;--h5:#782200;--h6:#5b1001;--t0:#0e1013;--t1:#0e1013;--t2:#0e1013;--t3:#fff;--t4:#fff;--t5:#fff;--t6:#fff;--hatch:rgba(17,19,23,.14);--veil:rgba(232,233,234,.68)}
+@media (prefers-color-scheme: light){.cp[data-theme="auto"]{--chassis:#dcdee1;--bezel:#e8e9ea;--well:#f3f4f4;--rule:#c6c9ce;--rule-2:#a3a8b0;--ink:#111317;--ink-2:#3f444c;--ink-3:#555b64;--h0:#86a6cf;--h1:#6494c1;--h2:#4a84a1;--h3:#52706d;--h4:#864100;--h5:#782200;--h6:#5b1001;--t0:#0e1013;--t1:#0e1013;--t2:#0e1013;--t3:#fff;--t4:#fff;--t5:#fff;--t6:#fff;--hatch:rgba(17,19,23,.14);--veil:rgba(232,233,234,.68)}}
+.cp *{box-sizing:border-box}
+.cp :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.mono{font-family:'Spline Sans Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.lbl{font-stretch:72%;font-weight:600;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--ink-2)}
+.dim{color:var(--ink-3)}
+.h0{background:var(--h0);color:var(--t0)}.h1{background:var(--h1);color:var(--t1)}.h2{background:var(--h2);color:var(--t2)}.h3{background:var(--h3);color:var(--t3)}.h4{background:var(--h4);color:var(--t4)}.h5{background:var(--h5);color:var(--t5)}.h6{background:var(--h6);color:var(--t6)}
+.hn{background-color:var(--well);color:var(--ink-2);background-image:repeating-linear-gradient(135deg,var(--hatch) 0 1px,transparent 1px 6px)}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 20px;padding:8px 20px;border-bottom:1px solid var(--rule);background:var(--bezel)}
+.brand{display:flex;gap:10px;text-decoration:none;min-height:44px;align-items:center}
+.brand b{font-stretch:62%;font-weight:900;font-size:21px;letter-spacing:.05em;text-transform:uppercase}
+.nav{display:flex;flex-wrap:wrap;gap:2px}
+.nav a{font-stretch:72%;font-weight:600;font-size:13px;letter-spacing:.07em;text-transform:uppercase;text-decoration:none;color:var(--ink-2);padding:0 10px;border:1px solid transparent;border-radius:2px;min-height:44px;display:inline-flex;align-items:center}
+.nav a:hover{color:var(--ink);border-color:var(--rule-2)}
+.nav a[aria-current="page"]{color:var(--ink);border-color:var(--ink)}
+.runid{margin-left:auto;font-size:12px;color:var(--ink-2)}
+.panel{background:var(--bezel);border:1px solid var(--rule);border-radius:2px;min-width:0}
+.ph{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:9px 14px;border-bottom:1px solid var(--rule)}
+.ph .n{font-family:'Spline Sans Mono',monospace;font-size:11px;color:var(--ink-3)}
+.ph h2,.ph h3{margin:0;font-stretch:72%;font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.btn{font:inherit;font-stretch:72%;font-weight:700;letter-spacing:.07em;text-transform:uppercase;font-size:12.5px;min-height:44px;padding:0 14px;border:1px solid var(--rule-2);background:transparent;color:var(--ink);border-radius:2px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;transition:transform .12s,box-shadow .12s}
+.btn:hover{border-color:var(--ink);box-shadow:3px 3px 0 var(--rule-2);transform:translate(-1px,-1px)}
+.btn.pri,.btn[aria-pressed="true"]{background:var(--ink);color:var(--chassis);border-color:var(--ink)}
+.btn.sq{width:44px;padding:0}
+@media (prefers-reduced-motion: reduce){.cp *,.cp *::before,.cp *::after{animation:none!important;transition:none!important}}
+/* flame */
+.wrap{max-width:1400px;margin:0 auto;padding:18px 20px 48px;display:flex;flex-direction:column;gap:14px}
+.tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
+.title{margin:0;font-stretch:125%;font-weight:800;letter-spacing:-.02em;font-size:clamp(26px,3cqi,40px);line-height:1}
+.seg2{display:inline-flex;border:1px solid var(--rule-2);border-radius:2px}
+.seg2 .btn{border:0;border-radius:0}
+.seg2 .btn+.btn{border-left:1px solid var(--rule-2)}
+.zoom{display:flex;align-items:center;gap:6px}
+.zoom input{width:140px;accent-color:var(--ink)}
+.grid{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+.inst{flex:999 1 640px;min-width:0}
+.rail{flex:1 1 330px;min-width:0;display:flex;flex-direction:column;gap:14px}
+.mini{position:relative;height:16px;margin:12px 14px 4px;cursor:grab;touch-action:none;overflow:hidden;border:1px solid var(--rule-2)}
+.mseg{position:absolute;top:0;bottom:0}
+.brush{position:absolute;top:0;bottom:0;border-left:2px solid var(--ink);border-right:2px solid var(--ink);box-shadow:0 0 0 2000px var(--veil);transition:left .18s ease-out,width .18s ease-out}
+.ruler{display:block;position:relative;height:36px;margin:0 14px;width:calc(100% - 28px);padding:0;border:0;border-bottom:1px solid var(--rule-2);background:transparent;color:inherit;font:inherit;cursor:crosshair;overflow:hidden}
+.tk{position:absolute;bottom:0;width:1px;background:var(--rule-2)}
+.tk.mj{background:var(--ink-3)}
+.tk span{position:absolute;bottom:12px;left:4px;font-family:'Spline Sans Mono',monospace;font-size:10.5px;color:var(--ink-3);white-space:nowrap}
+.flag{position:absolute;top:0;bottom:0;border-left:1px dashed var(--ink);pointer-events:none}
+.flag span{position:absolute;top:2px;left:0;background:var(--ink);color:var(--chassis);font-family:'Spline Sans Mono',monospace;font-size:10px;font-weight:600;padding:0 4px;line-height:15px}
+.ctag{position:absolute;top:2px;transform:translateX(-50%);border:1px solid var(--ink);background:var(--bezel);font-family:'Spline Sans Mono',monospace;font-size:10px;padding:0 4px;line-height:14px;pointer-events:none;white-space:nowrap}
+.vp{position:relative;margin:4px 14px 0;overflow:hidden;display:flex;flex-direction:column;gap:2px;touch-action:pan-y;cursor:zoom-in}
+.vp:focus-visible{outline:2px solid var(--ink);outline-offset:4px}
+.frow{position:relative;height:32px}
+.seg{position:absolute;top:0;bottom:0;margin:0;border:0;border-radius:0;padding:0 7px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;font-weight:500;text-align:left;display:flex;align-items:center;overflow:hidden;white-space:nowrap;cursor:pointer;box-shadow:inset -2px 0 0 var(--bezel);transition:left .18s ease-out,width .18s ease-out;animation:heat .6s ease-out both}
+.seg span{overflow:hidden;text-overflow:ellipsis}
+.seg:hover{box-shadow:inset -2px 0 0 var(--bezel),inset 0 3px 0 var(--ink)}
+.seg:focus-visible{outline:2px solid var(--ink);outline-offset:-2px;z-index:3}
+.seg.sel{box-shadow:inset 0 0 0 2px var(--ink),inset 0 0 0 4px var(--bezel);z-index:2}
+.seg.gone{visibility:hidden}
+.live .seg,.live .brush{transition:none}
+@keyframes heat{from{filter:grayscale(1) brightness(.5)}to{filter:none}}
+.sweep{position:absolute;top:0;bottom:0;width:2px;background:var(--ink);animation:sweep 1.2s cubic-bezier(.3,.1,.3,1) forwards;pointer-events:none;z-index:4}
+@keyframes sweep{from{left:0;opacity:1}90%{opacity:1}to{left:100%;opacity:0}}
+.hair{position:absolute;top:0;bottom:0;width:1px;background:var(--ink);opacity:.75;pointer-events:none;z-index:4}
+.mline{position:absolute;top:0;bottom:0;border-left:1px dashed var(--ink);pointer-events:none;z-index:4}
+.mband{position:absolute;top:0;bottom:0;pointer-events:none;z-index:1;background-image:repeating-linear-gradient(135deg,var(--hatch) 0 1px,transparent 1px 7px)}
+.mro{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-top:1px solid var(--rule);margin-top:12px}
+.mro div{padding:10px 14px;border-right:1px solid var(--rule);min-width:0}
+.mro div:last-child{border-right:0}
+.v{display:block;font-family:'Spline Sans Mono',monospace;font-variant-numeric:tabular-nums;font-size:19px;font-weight:500;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;padding:10px 14px;border-top:1px solid var(--rule);align-items:center}
+.legend span{display:inline-flex;align-items:center;gap:6px;font-family:'Spline Sans Mono',monospace;font-size:11px;color:var(--ink-2)}
+.legend i{display:block;width:16px;height:12px}
+.keys{display:flex;flex-wrap:wrap;gap:6px 16px;padding:10px 14px;border-top:1px solid var(--rule);font-size:12.5px;color:var(--ink-2)}
+kbd{font-family:'Spline Sans Mono',monospace;font-size:11px;border:1px solid var(--rule-2);border-bottom-width:2px;padding:0 5px;border-radius:2px;color:var(--ink)}
+.crumbs{font-family:'Spline Sans Mono',monospace;font-size:11.5px;color:var(--ink-3);padding:12px 14px 0}
+.selfp{font-family:'Spline Sans Mono',monospace;font-size:17px;font-weight:600;padding:4px 14px 10px;word-break:break-word}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 12px}
+.chip{font-family:'Spline Sans Mono',monospace;font-size:11px;border:1px solid var(--rule-2);padding:2px 7px;display:inline-flex;align-items:center;gap:5px}
+.chip.solid{background:var(--ink);color:var(--chassis);border-color:var(--ink)}
+.rg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid var(--rule)}
+.rg div{padding:10px 14px;border-bottom:1px solid var(--rule);min-width:0}
+.rg div:nth-child(odd){border-right:1px solid var(--rule)}
+.hist{display:flex;align-items:flex-end;gap:2px;height:64px;padding:0 14px}
+.hist i{flex:1;display:block;min-height:1px}
+.hax{display:flex;justify-content:space-between;padding:4px 14px 12px;font-family:'Spline Sans Mono',monospace;font-size:10.5px;color:var(--ink-3);border-top:0}
+.acts{display:flex;flex-wrap:wrap;gap:8px;padding:12px 14px;border-top:1px solid var(--rule)}
+.note{margin:0;padding:12px 14px;font-size:13px;color:var(--ink-2);border-top:1px solid var(--rule)}
+@container (max-width: 900px){.mro{grid-template-columns:repeat(2,minmax(0,1fr))}.mro div{border-bottom:1px solid var(--rule)}.inst,.rail{flex-basis:100%}}
+@container (max-width: 560px){.runid{margin-left:0}.wrap{padding:14px 16px 40px}.zoom input{width:100px}.frow{height:30px}.keys{display:none}.v{font-size:16px}}
+</style>
+</helmet>
+<div class="cpw">
+<div class="cp" data-theme="{{theme}}">
+  <header class="bar">
+    <a class="brand" href="Main.dc.html" aria-label="Context Profiler overview">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 19h18M2 15h18"></path><path d="M3 15V11h6v4M10 15V7h5v8M16 15v-3h3v3"></path><path d="M2 3v2M7 3v2M12 3v2M17 3v2"></path></svg>
+      <b>Context Profiler</b>
+    </a>
+    <nav class="nav" aria-label="Screens">
+      <a href="Main.dc.html">Overview</a>
+      <a href="Flame.dc.html" aria-current="page">Flame graph</a>
+      <a href="Segments.dc.html">Segments</a>
+      <a href="Trace.dc.html">Traces</a>
+      <a href="Pruning.dc.html">Pruning</a>
+    </nav>
+    <span class="runid mono">run 0007 · trace 0142 of 200</span>
+  </header>
+
+  <main class="wrap">
+    <div class="tools">
+      <div style="display: flex; flex-direction: column; gap: 4px; margin-right: auto">
+        <span class="lbl">Icicle · width = tokens · heat = influence (logprob mode)</span>
+        <h1 class="title">Context window, trace 0142</h1>
+      </div>
+      <div class="seg2" role="group" aria-label="Ordering">
+        <button class="btn" type="button" aria-pressed="{{modeWin}}" onClick="{{setWin}}">Window order</button>
+        <button class="btn" type="button" aria-pressed="{{modeHeavy}}" onClick="{{setHeavy}}">Heaviest first</button>
+      </div>
+      <div class="zoom">
+        <button class="btn sq" type="button" onClick="{{zoomOut}}" aria-label="Zoom out">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 7h10"></path></svg></button>
+        <label class="lbl" for="zr" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Zoom level</label>
+        <input id="zr" type="range" min="0" max="100" step="1" value="{{zoomVal}}" onChange="{{onSlider}}">
+        <button class="btn sq" type="button" onClick="{{zoomIn}}" aria-label="Zoom in">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 7h10M7 2v10"></path></svg></button>
+        <button class="btn" type="button" onClick="{{reset}}">Fit</button>
+      </div>
+      <span class="mono" style="font-size: 12px; color: var(--ink-2); min-width: 190px">tok {{v0txt}} – {{v1txt}} · {{zx}}</span>
+    </div>
+
+    <div class="grid">
+      <section class="panel inst" aria-labelledby="fg-h">
+        <div class="ph">
+          <span class="n">02.1</span><h2 id="fg-h">Flame stack</h2>
+          <span class="dim" style="font-size: 12.5px">scroll to zoom through the window · click a bar to read it · click the ruler to drop a marker</span>
+        </div>
+        <div class="mini" onPointerDown="{{miniDown}}" onPointerMove="{{miniMove}}" onPointerUp="{{miniUp}}" aria-hidden="true">
+          <sc-for list="{{miniSegs}}" as="m" hint-placeholder-count="12">
+            <i class="mseg {{m.cls}}" style="left: {{m.l}}%; width: {{m.w}}%"></i>
+          </sc-for>
+          <i class="brush" style="left: {{brushL}}%; width: {{brushW}}%"></i>
+        </div>
+        <button class="ruler" type="button" onClick="{{placeMarker}}" aria-label="Token ruler from {{v0txt}} to {{v1txt}}. Activate to drop marker M{{next}}.">
+          <sc-for list="{{ticks}}" as="t" hint-placeholder-count="20">
+            <span class="tk {{t.cls}}" style="left: {{t.l}}%; height: {{t.h}}px"><span>{{t.txt}}</span></span>
+          </sc-for>
+          <sc-for list="{{flags}}" as="f" hint-placeholder-count="2">
+            <span class="flag" style="left: {{f.l}}%"><span>{{f.name}}</span></span>
+          </sc-for>
+          <sc-if value="{{hasHair}}" hint-placeholder-val="{{ false }}">
+            <span class="ctag" style="left: {{hairPx}}px">{{hairTok}}</span>
+          </sc-if>
+        </button>
+        <div class="vp {{liveCls}}" ref="{{setVp}}" tabIndex="0" role="group" aria-label="Flame stack. W and S zoom, A and D pan, F zooms to the selected segment, 0 fits the whole window." onKeyDown="{{onKey}}" onPointerMove="{{onMove}}" onPointerLeave="{{onLeave}}">
+          <div class="sweep" aria-hidden="true"></div>
+          <sc-if value="{{hasBand}}" hint-placeholder-val="{{ true }}">
+            <div class="mband" style="left: {{bandL}}%; width: {{bandW}}%" aria-hidden="true"></div>
+          </sc-if>
+          <sc-for list="{{rows}}" as="r" hint-placeholder-count="4">
+            <div class="frow">
+              <sc-for list="{{r.segs}}" as="s" hint-placeholder-count="8">
+                <button class="seg {{s.cls}}" type="button" style="left: {{s.l}}%; width: {{s.w}}%; animation-delay: {{s.d}}ms" aria-label="{{s.aria}}" aria-pressed="{{s.on}}" onClick="{{s.pick}}" onDoubleClick="{{s.dive}}"><span>{{s.txt}}</span></button>
+              </sc-for>
+            </div>
+          </sc-for>
+          <sc-for list="{{flags}}" as="f" hint-placeholder-count="2">
+            <div class="mline" style="left: {{f.l}}%" aria-hidden="true"></div>
+          </sc-for>
+          <sc-if value="{{hasHair}}" hint-placeholder-val="{{ false }}">
+            <div class="hair" style="left: {{hairPx}}px" aria-hidden="true"></div>
+          </sc-if>
+        </div>
+        <div class="mro" aria-live="polite">
+          <div><span class="lbl">M1</span><span class="v">{{m1txt}}</span></div>
+          <div><span class="lbl">M2</span><span class="v">{{m2txt}}</span></div>
+          <div><span class="lbl">Δ tokens</span><span class="v">{{dTok}}</span><span class="mono dim" style="font-size: 11.5px">{{dPct}} of window</span></div>
+          <div><span class="lbl">Σ influence inside</span><span class="v">{{dInfl}}</span><span class="mono dim" style="font-size: 11.5px">{{dCount}} whole segments</span></div>
+          <div><span class="lbl">Δ cost / 100k req</span><span class="v">{{dCost}}</span><span class="mono dim" style="font-size: 11.5px">at $3.00 / 1M input</span></div>
+        </div>
+        <div class="legend" aria-label="Heat key">
+          <span class="lbl" style="font-family: inherit">Heat = influence</span>
+          <span><i class="h0"></i>H0 &lt;.05</span><span><i class="h1"></i>H1 .05</span><span><i class="h2"></i>H2 .15</span><span><i class="h3"></i>H3 .25</span><span><i class="h4"></i>H4 .40</span><span><i class="h5"></i>H5 .55</span><span><i class="h6"></i>H6 ≥.70</span>
+          <span><i class="hn"></i>not scored</span>
+        </div>
+        <div class="keys">
+          <span><kbd>Wheel</kbd> zoom at cursor</span><span><kbd>Shift</kbd>+<kbd>Wheel</kbd> pan</span><span><kbd>W</kbd><kbd>S</kbd> zoom</span><span><kbd>A</kbd><kbd>D</kbd> pan</span><span><kbd>F</kbd> fit selection</span><span><kbd>0</kbd> fit window</span><span>Double-click a bar to dive</span>
+        </div>
+      </section>
+
+      <aside class="rail" aria-label="Selected segment">
+        <section class="panel">
+          <div class="ph"><span class="n">02.2</span><h2>Selected</h2><span class="mono dim" style="margin-left: auto; font-size: 11.5px">{{sel.range}}</span></div>
+          <div class="crumbs">{{sel.path}}</div>
+          <div class="selfp">{{sel.fp}}</div>
+          <div class="chips">
+            <span class="chip">{{sel.kind}}</span>
+            <span class="chip">{{sel.src}}</span>
+            <sc-if value="{{sel.hasLabel}}" hint-placeholder-val="{{ true }}"><span class="chip solid">{{sel.label}}</span></sc-if>
+            <sc-if value="{{sel.inj}}" hint-placeholder-val="{{ true }}"><span class="chip solid">⚑ injection signal</span></sc-if>
+          </div>
+          <div class="rg">
+            <div><span class="lbl">Tokens</span><span class="v">{{sel.tok}}</span><span class="mono dim" style="font-size: 11.5px">{{sel.pct}} of window</span></div>
+            <div><span class="lbl">Influence, this trace</span><span class="v">{{sel.infl}}</span><span class="mono dim" style="font-size: 11.5px">heat {{sel.heat}}</span></div>
+            <div><span class="lbl">Influence / 1k tok</span><span class="v">{{sel.per1k}}</span></div>
+            <div><span class="lbl">Cost / 100k req</span><span class="v">{{sel.cost}}</span></div>
+          </div>
+          <p class="note">{{sel.masks}}</p>
+        </section>
+        <section class="panel">
+          <div class="ph"><span class="n">02.3</span><h3>Across {{sel.freq}} traces</h3><span class="mono dim" style="margin-left: auto; font-size: 11.5px">mean {{sel.mean}} · σ {{sel.sd}}</span></div>
+          <div style="padding-top: 12px"></div>
+          <div class="hist" role="img" aria-label="{{sel.histAria}}">
+            <sc-for list="{{sel.hist}}" as="b" hint-placeholder-count="20">
+              <i class="{{b.cls}}" style="height: {{b.h}}%"></i>
+            </sc-for>
+          </div>
+          <div class="hax"><span>0.0</span><span>influence</span><span>1.0</span></div>
+          <div class="acts">
+            <button class="btn pri" type="button" onClick="{{fitSel}}">Zoom to segment</button>
+            <button class="btn" type="button" onClick="{{markSel}}">Bracket with M1·M2</button>
+            <a class="btn" href="Trace.dc.html">Trace drill-down</a>
+            <a class="btn" href="Segments.dc.html">In segment table</a>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light","auto"],"default":"dark"},"$preview":{"width":1440,"height":1240}}'>
+class Component extends DCLogic {
+  vpEl = null;
+  setVp = (el) => {
+    if (el === this.vpEl) return;
+    if (this.vpEl && this._wh) this.vpEl.removeEventListener('wheel', this._wh);
+    if (this._ro) { this._ro.disconnect(); this._ro = null; }
+    this.vpEl = el;
+    if (!el) return;
+    this._wh = (e) => this.onWheel(e);
+    el.addEventListener('wheel', this._wh, { passive: false });
+    if (window.ResizeObserver) {
+      this._ro = new ResizeObserver((en) => { var w = en[0].contentRect.width; var cur = (this.state && this.state.W) || 0; if (w && Math.abs(w - cur) > 1) this.setState({ W: w }); });
+      this._ro.observe(el);
+    }
+  };
+  componentWillUnmount() { if (this._ro) this._ro.disconnect(); if (this.vpEl && this._wh) this.vpEl.removeEventListener('wheel', this._wh); }
+  bin(v) { return v < .05 ? 0 : v < .15 ? 1 : v < .25 ? 2 : v < .40 ? 3 : v < .55 ? 4 : v < .70 ? 5 : 6; }
+  fmt(n) { return Math.round(n).toLocaleString('en-US'); }
+  data() {
+    if (this._d) return this._d;
+    var KD = [['system','System prompt',.64,'trusted'],['tools','Tool schemas',.71,'trusted'],['rag','Retrieved chunks',.69,'mixed'],['hist','History',.31,'mixed'],['user','User turn',.93,'user input']];
+    var L = [
+      ['system','system/## Role','Role',142,.62,'trusted'],['system','system/## Tone rules','Tone rules',236,.31,'trusted'],['system','system/## Escalation to human agent','Escalation',188,.48,'trusted'],['system','system/## Refund policy (2023, legacy)','Refund policy 2023',410,.01,'trusted'],['system','system/## Swahili & Sheng replies','Swahili & Sheng',164,.44,'trusted'],['system','system/## Company history','Company history',322,0,'trusted'],['system','system/## Fraud warnings','Fraud warnings',206,.71,'trusted'],['system','system/## Formatting','Formatting',118,.22,'trusted'],['system','system/## Holiday hours 2024','Holiday hours 2024',262,.02,'trusted'],
+      ['tools','tool/get_application_status','get_application_status',352,.81,'trusted',[['description',64,.22],['parameters',220,.74],['examples',68,.31]]],['tools','tool/search_jobs','search_jobs',486,.52,'trusted',[['description',92,.18],['parameters',318,.47],['examples',76,.09]]],['tools','tool/get_job','get_job',298,.44,'trusted'],['tools','tool/apply_to_job','apply_to_job',344,.04,'trusted'],['tools','tool/schedule_interview','schedule_interview',318,.03,'trusted'],['tools','tool/upload_cv','upload_cv',276,.02,'trusted'],['tools','tool/get_salary_band','get_salary_band',302,.09,'trusted'],['tools','tool/translate_text','translate_text',264,.02,'trusted'],['tools','tool/list_counties','list_counties',188,.01,'trusted'],['tools','tool/report_listing','report_listing',254,.05,'trusted'],['tools','tool/convert_currency','convert_currency',230,0,'trusted'],['tools','tool/get_weather','get_weather',300,0,'trusted'],
+      ['rag','rag/kb:application-status#1','kb:application-status#1',412,.58,'trusted'],['rag','rag/kb:cv-tips#3','kb:cv-tips#3',286,.12,'trusted'],['rag','rag/listing:88213','listing:88213',344,.74,'untrusted',[['title + meta',96,.08],['body',248,.71]]],['rag','rag/kb:press-2019#2','kb:press-2019#2',318,0,'trusted'],['rag','rag/kb:office-locations#4','kb:office-locations#4',262,.03,'trusted'],['rag','rag/kb:fraud-faq#1','kb:fraud-faq#1',268,.39,'trusted'],
+      ['hist','history/user −2','user −2',96,.08,'untrusted'],['hist','history/assistant −2','assistant −2',214,.06,'trusted'],['hist','history/user −1','user −1',122,.27,'untrusted'],['hist','history/assistant −1','assistant −1',380,.18,'trusted'],
+      ['user','user/current','user (current)',50,.92,'user input']
+    ];
+    var AGG = {'system/## Role':[200,.61,.07,'▲ CRITICAL'],'system/## Tone rules':[200,.29,.09,''],'system/## Escalation to human agent':[200,.22,.21,'≈ VOLATILE'],'system/## Refund policy (2023, legacy)':[200,.01,.01,'□ DEAD'],'system/## Swahili & Sheng replies':[200,.38,.19,''],'system/## Company history':[200,0,0,'□ DEAD'],'system/## Fraud warnings':[200,.46,.24,'≈ VOLATILE'],'system/## Formatting':[200,.17,.05,''],'system/## Holiday hours 2024':[200,.02,.01,'□ DEAD'],'tool/get_application_status':[200,.55,.22,'▲ CRITICAL'],'tool/search_jobs':[200,.57,.18,'▲ CRITICAL'],'tool/get_job':[200,.34,.17,''],'tool/apply_to_job':[200,.02,.02,'□ DEAD'],'tool/schedule_interview':[200,.01,.06,'□ DEAD'],'tool/upload_cv':[200,.01,.01,'□ DEAD'],'tool/get_salary_band':[200,.07,.14,'≈ VOLATILE'],'tool/translate_text':[200,.01,.02,'□ DEAD'],'tool/list_counties':[200,0,0,'□ DEAD'],'tool/report_listing':[200,.05,.12,'≈ VOLATILE'],'tool/convert_currency':[200,0,0,'□ DEAD'],'tool/get_weather':[200,0,0,'□ DEAD'],'rag/kb:application-status#1':[118,.49,.16,''],'rag/kb:cv-tips#3':[64,.11,.08,''],'rag/listing:88213':[141,.41,.27,'≈ VOLATILE'],'rag/kb:press-2019#2':[143,0,0,'□ DEAD'],'rag/kb:office-locations#4':[97,.02,.02,'□ DEAD'],'rag/kb:fraud-faq#1':[52,.36,.14,''],'history/user −2':[121,.07,.06,''],'history/assistant −2':[121,.05,.05,''],'history/user −1':[174,.16,.12,''],'history/assistant −1':[174,.17,.10,''],'user/current':[200,.90,.05,'▲ CRITICAL']};
+    var nodes = {}, flat = [];
+    var root = { id: 'root', fp: 'request · trace 0142', short: 'request · trace 0142', tok: 8412, infl: null, depth: 0, src: 'whole request', kind: 'request', kids: [], parent: null };
+    nodes.root = root; flat.push(root);
+    var kinds = {};
+    KD.forEach(function (k) { var n = { id: 'kind/' + k[0], fp: k[1], short: k[1], tok: 0, infl: k[2], depth: 1, src: k[3], kind: 'kind', kids: [], parent: 'root' }; kinds[k[0]] = n; nodes[n.id] = n; root.kids.push(n); flat.push(n); });
+    L.forEach(function (s) {
+      var n = { id: s[1], fp: s[1], short: s[2], tok: s[3], infl: s[4], depth: 2, src: s[5], kind: s[0], kids: [], parent: 'kind/' + s[0] };
+      kinds[s[0]].tok += s[3]; kinds[s[0]].kids.push(n); nodes[n.id] = n; flat.push(n);
+      (s[6] || []).forEach(function (c) { var m = { id: s[1] + ' › ' + c[0], fp: s[1] + ' › ' + c[0], short: c[0], tok: c[1], infl: c[2], depth: 3, src: s[5], kind: s[0], kids: [], parent: s[1] }; n.kids.push(m); nodes[m.id] = m; flat.push(m); });
+    });
+    var lay = {};
+    ['window', 'heavy'].forEach(function (mode) {
+      var off = {};
+      var place = function (n, o) { off[n.id] = o; var ks = mode === 'heavy' ? n.kids.slice().sort(function (a, b) { return b.infl - a.infl; }) : n.kids; var c = o; ks.forEach(function (k) { place(k, c); c += k.tok; }); };
+      place(root, 0); lay[mode] = off;
+    });
+    this._d = { nodes: nodes, flat: flat, lay: lay, AGG: AGG, KD: KD };
+    return this._d;
+  }
+  S() { var s = this.state || {}; return { v0: s.v0 ?? 0, span: s.span ?? 8412, sel: s.sel ?? 'rag/listing:88213', m1: s.m1 ?? 2048, m2: s.m2 ?? 5660, next: s.next ?? 1, hx: s.hx ?? null, mode: s.mode ?? 'window', W: s.W ?? 1000, live: s.live ?? false }; }
+  setView(v0, span) { var T = 8412; span = Math.max(24, Math.min(T, span)); v0 = Math.max(0, Math.min(T - span, v0)); this.setState({ v0: v0, span: span }); }
+  zoomAt(frac, f) { var s = this.S(); var c = s.v0 + frac * s.span; var ns = Math.max(24, Math.min(8412, s.span * f)); this.setView(c - frac * ns, ns); }
+  focusFrac() { var s = this.S(); return s.hx != null ? Math.max(0, Math.min(1, s.hx / s.W)) : .5; }
+  fitNode(id) { var d = this.data(), s = this.S(); var n = d.nodes[id]; var o = d.lay[s.mode][id]; this.setView(o - n.tok * .04, n.tok * 1.08); }
+  onWheel(e) {
+    e.preventDefault();
+    var s = this.S(); var r = this.vpEl.getBoundingClientRect();
+    var k = e.deltaMode === 1 ? 16 : 1;
+    if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) { var dx = (e.deltaX || e.deltaY) * k; this.setView(s.v0 + dx / r.width * s.span, s.span); }
+    else { var frac = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); this.zoomAt(frac, Math.exp(e.deltaY * k * 0.0016)); }
+  }
+  renderVals() {
+    var self = this, d = this.data(), s = this.S(), T = 8412;
+    var lay = d.lay[s.mode], span = s.span, v0 = s.v0;
+    var pct = function (t) { return ((t - v0) / span * 100); };
+    var rows = [[], [], [], []];
+    d.flat.forEach(function (n) {
+      var o = lay[n.id], l = pct(o), r = pct(o + n.tok);
+      var vis = r > 0 && l < 100;
+      var Lc = Math.max(l, -1), Rc = Math.min(r, 101), w = Math.max(0, Rc - Lc), px = w / 100 * s.W;
+      var h = n.infl == null ? null : self.bin(n.infl);
+      var txt = px >= 160 ? n.short + ' · ' + self.fmt(n.tok) : (px >= 46 ? n.short : '');
+      rows[n.depth].push({
+        cls: (h == null ? 'hn' : 'h' + h) + (vis ? '' : ' gone') + (n.id === s.sel ? ' sel' : ''),
+        l: Lc.toFixed(3), w: w.toFixed(3), d: Math.round(o / T * 950) + n.depth * 50, txt: txt, on: n.id === s.sel,
+        aria: n.fp + ', ' + self.fmt(n.tok) + ' tokens' + (n.infl == null ? '' : ', influence ' + n.infl.toFixed(2) + ', heat H' + h),
+        pick: function () { self.setState({ sel: n.id }); },
+        dive: function () { self.setState({ sel: n.id }); self.fitNode(n.id); }
+      });
+    });
+    var mini = [];
+    d.flat.forEach(function (n) { if (n.depth === 2) { var o = d.lay.window[n.id]; mini.push({ cls: 'h' + self.bin(n.infl), l: (o / T * 100).toFixed(3), w: (n.tok / T * 100).toFixed(3) }); } });
+    var steps = [5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000], raw = span / Math.max(4, s.W / 95), step = 2000;
+    for (var i = 0; i < steps.length; i++) { if (steps[i] >= raw) { step = steps[i]; break; } }
+    var minor = step / 5, ticks = [];
+    for (var t = Math.ceil(v0 / minor) * minor; t <= v0 + span && ticks.length < 260; t += minor) {
+      var mj = Math.abs(t / step - Math.round(t / step)) < 1e-6;
+      ticks.push({ l: pct(t).toFixed(3), h: mj ? 16 : 6, cls: mj ? 'mj' : '', txt: mj ? self.fmt(t) : '' });
+    }
+    var flags = [];
+    [['M1', s.m1], ['M2', s.m2]].forEach(function (m) { var p = pct(m[1]); if (p >= 0 && p <= 100) flags.push({ name: m[0], l: p.toFixed(3) }); });
+    var a = Math.min(s.m1, s.m2), b = Math.max(s.m1, s.m2), sum = 0, cnt = 0;
+    d.flat.forEach(function (n) { if (n.depth === 2) { var o = lay[n.id]; if (o >= a && o + n.tok <= b) { sum += n.infl; cnt++; } } });
+    var bl = Math.max(0, pct(a)), br = Math.min(100, pct(b));
+    var hasHair = s.hx != null;
+    var hairTok = hasHair ? 'tok ' + self.fmt(v0 + s.hx / s.W * span) : '';
+    var n = d.nodes[s.sel] || d.nodes.root, o = lay[n.id];
+    var ag = d.AGG[n.fp] || (n.depth === 3 ? d.AGG[n.parent] : null) || [200, n.infl == null ? 1 : n.infl, .06, ''];
+    var hist = [], mean = ag[1], sd = Math.max(ag[2], .02), mx = 0;
+    for (var j = 0; j < 20; j++) { var c = (j + .5) / 20; var v = Math.exp(-.5 * Math.pow((c - mean) / sd, 2)); hist.push(v); mx = Math.max(mx, v); }
+    var path = [], p = n; while (p) { path.unshift(p.depth === 0 ? 'request' : p.short); p = p.parent ? d.nodes[p.parent] : null; }
+    var masks = n.infl == null ? 'The whole request is the reference: every ablation is scored against its original response.' :
+      'Dropped in 16 of 32 masks for this trace. The original answer lost ≥ 0.1 logit-probability in ' + Math.round(16 * Math.min(1, n.infl * 1.25)) + ' of those 16.' + (n.src === 'untrusted' && n.infl >= .55 ? ' Untrusted and in the top 1% for this trace: review before trusting the answer.' : '');
+    var kindName = n.depth === 0 ? 'request' : n.depth === 1 ? 'segment kind' : ({ system: 'system section', tools: 'tool schema', rag: 'retrieved chunk', hist: 'prior turn', user: 'user turn' })[n.kind] + (n.depth === 3 ? ' part' : '');
+    var sel = {
+      fp: n.fp, path: path.join(' › '), kind: kindName, src: n.src, label: ag[3], hasLabel: !!ag[3],
+      inj: n.src === 'untrusted' && n.infl != null && n.infl >= .55,
+      range: 'tok ' + self.fmt(o) + ' – ' + self.fmt(o + n.tok),
+      tok: self.fmt(n.tok), pct: (n.tok / T * 100).toFixed(1) + '%',
+      infl: n.infl == null ? '1.00' : n.infl.toFixed(2), heat: n.infl == null ? 'n/a' : 'H' + self.bin(n.infl),
+      per1k: n.infl == null ? '—' : (n.infl / n.tok * 1000).toFixed(2),
+      cost: '$' + (n.tok * 3 / 1e6 * 1e5).toFixed(2),
+      freq: ag[0], mean: ag[1].toFixed(2), sd: ag[2].toFixed(2), masks: masks,
+      histAria: 'Distribution of influence across ' + ag[0] + ' traces, mean ' + ag[1].toFixed(2) + ', standard deviation ' + ag[2].toFixed(2),
+      hist: hist.map(function (v, j) { return { h: Math.max(2, v / mx * 100).toFixed(1), cls: 'h' + self.bin((j + .5) / 20) }; })
+    };
+    var logMax = Math.log(T / 24);
+    return {
+      theme: this.props.theme ?? 'dark',
+      rows: rows.map(function (r) { return { segs: r }; }), miniSegs: mini, ticks: ticks, flags: flags,
+      brushL: (v0 / T * 100).toFixed(3), brushW: (span / T * 100).toFixed(3),
+      hasBand: br > bl, bandL: bl.toFixed(3), bandW: (br - bl).toFixed(3),
+      hasHair: hasHair, hairPx: hasHair ? Math.round(s.hx) : 0, hairTok: hairTok,
+      liveCls: s.live ? 'live' : '', next: s.next,
+      v0txt: self.fmt(v0), v1txt: self.fmt(v0 + span), zx: (T / span).toFixed(1) + '×',
+      zoomVal: Math.round(Math.log(T / span) / logMax * 100),
+      m1txt: 'tok ' + self.fmt(s.m1), m2txt: 'tok ' + self.fmt(s.m2), dTok: self.fmt(b - a), dPct: ((b - a) / T * 100).toFixed(1) + '%',
+      dInfl: sum.toFixed(2), dCount: cnt, dCost: '$' + ((b - a) * 3 / 1e6 * 1e5).toFixed(2),
+      modeWin: s.mode === 'window', modeHeavy: s.mode === 'heavy', sel: sel,
+      setWin: function () { self.setState({ mode: 'window' }); },
+      setHeavy: function () { self.setState({ mode: 'heavy' }); },
+      zoomIn: function () { self.zoomAt(.5, 1 / 1.6); },
+      zoomOut: function () { self.zoomAt(.5, 1.6); },
+      reset: function () { self.setView(0, T); },
+      onSlider: function (e) { var val = +e.target.value; var ns = T / Math.exp(val / 100 * logMax); var c = v0 + span / 2; self.setView(c - ns / 2, ns); },
+      fitSel: function () { self.fitNode(s.sel); },
+      markSel: function () { self.setState({ m1: o, m2: o + n.tok, next: 1 }); },
+      placeMarker: function (e) {
+        var t;
+        if (e.detail === 0) { t = v0 + span / 2; } else { var r = e.currentTarget.getBoundingClientRect(); t = v0 + (e.clientX - r.left) / r.width * span; }
+        t = Math.round(Math.max(0, Math.min(T, t)));
+        if (s.next === 1) self.setState({ m1: t, next: 2 }); else self.setState({ m2: t, next: 1 });
+      },
+      onMove: function (e) { var r = e.currentTarget.getBoundingClientRect(); self.setState({ hx: e.clientX - r.left }); },
+      onLeave: function () { self.setState({ hx: null }); },
+      onKey: function (e) {
+        var k = e.key; var f = self.focusFrac();
+        if (k === 'w' || k === 'W' || k === '+' || k === '=') self.zoomAt(f, 1 / 1.4);
+        else if (k === 's' || k === 'S' || k === '-') self.zoomAt(f, 1.4);
+        else if (k === 'a' || k === 'A' || k === 'ArrowLeft') self.setView(v0 - span * .12, span);
+        else if (k === 'd' || k === 'D' || k === 'ArrowRight') self.setView(v0 + span * .12, span);
+        else if (k === 'f' || k === 'F') self.fitNode(s.sel);
+        else if (k === '0' || k === 'Escape') self.setView(0, T);
+        else return;
+        e.preventDefault();
+      },
+      miniDown: function (e) { try { e.currentTarget.setPointerCapture(e.pointerId); } catch (x) {} var r = e.currentTarget.getBoundingClientRect(); var c = (e.clientX - r.left) / r.width * T; self.setState({ live: true }); self.setView(c - span / 2, span); },
+      miniMove: function (e) { if (!(e.buttons & 1)) return; var r = e.currentTarget.getBoundingClientRect(); var c = (e.clientX - r.left) / r.width * T; self.setView(c - span / 2, span); },
+      miniUp: function () { self.setState({ live: false }); },
+      setVp: this.setVp
+    };
+  }
+}
+</script>
+</body>
+</html>

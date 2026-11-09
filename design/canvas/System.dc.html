@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Context Profiler · Graticule system</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&amp;family=Spline+Sans+Mono:wght@300..700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.m{font-family:'Spline Sans Mono',monospace;font-variant-numeric:tabular-nums}
+.l{font-family:'Archivo',sans-serif;font-stretch:72%;font-weight:600;text-transform:uppercase;letter-spacing:.08em;font-size:11px}
+.sw{display:flex;flex-direction:column;gap:4px;min-width:0}
+.sw i{display:block;height:44px;border:1px solid rgba(128,128,128,.35)}
+.sw span{font-family:'Spline Sans Mono',monospace;font-size:11px}
+.ramp{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px}
+.ramp i{display:flex;align-items:flex-end;height:58px;padding:6px;font-family:'Spline Sans Mono',monospace;font-size:11px;font-style:normal}
+.chk{font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.7}
+h2{margin:0 0 12px;font-family:'Archivo',sans-serif;font-stretch:72%;font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1360px; box-sizing: border-box; padding: 48px 56px; background: #0f1114; color: #e6e8eb; font-family: 'Archivo', sans-serif; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto auto auto; gap: 28px 40px">
+  <div style="grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid #3a3f48; padding-bottom: 18px">
+    <div>
+      <span class="l" style="color: #a9afb8">07 · Design system</span>
+      <h1 style="margin: 8px 0 0; font-stretch: 125%; font-weight: 800; letter-spacing: -.03em; font-size: 64px; line-height: .95">Graticule</h1>
+    </div>
+    <p style="margin: 0; max-width: 560px; color: #a9afb8; font-size: 15px">A bench analyser for the context window. Graphite chassis, one heat ramp that only ever means influence, a token ruler on every view, and markers you drop like a spectrum analyser’s M1 and Δ.</p>
+  </div>
+
+  <section style="background: #14161a; border: 1px solid #272b32; padding: 20px">
+    <h2>Chassis · dark (default)</h2>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px">
+      <div class="sw"><i style="background: #0f1114"></i><span>chassis #0f1114</span></div>
+      <div class="sw"><i style="background: #14161a"></i><span>bezel #14161a</span></div>
+      <div class="sw"><i style="background: #1a1d22"></i><span>well #1a1d22</span></div>
+      <div class="sw"><i style="background: #3a3f48"></i><span>graticule #3a3f48</span></div>
+      <div class="sw"><i style="background: #e6e8eb"></i><span>trace ink #e6e8eb · 14.8:1</span></div>
+      <div class="sw"><i style="background: #a9afb8"></i><span>legend #a9afb8 · 8.2:1</span></div>
+      <div class="sw"><i style="background: #8a919b"></i><span>dim #8a919b · 5.6:1</span></div>
+      <div class="sw"><i style="background: #14161a; background-image: repeating-linear-gradient(135deg, rgba(230,232,235,.16) 0 1px, transparent 1px 6px)"></i><span>hatch = removed / absent</span></div>
+    </div>
+    <h2 style="margin-top: 22px">Heat ramp · dark · H0 idle → H6 peak</h2>
+    <div class="ramp">
+      <i style="background: #2c4d7d; color: #eef0f2">H0 2c4d7d</i><i style="background: #366794; color: #eef0f2">H1 366794</i><i style="background: #49829f; color: #0e1013">H2 49829f</i><i style="background: #7a9997; color: #0e1013">H3 7a9997</i><i style="background: #dd9b5f; color: #0e1013">H4 dd9b5f</i><i style="background: #ffb45b; color: #0e1013">H5 ffb45b</i><i style="background: #ffe183; color: #0e1013">H6 ffe183</i>
+    </div>
+    <p class="chk" style="margin: 12px 0 0; color: #a9afb8">OKLCH L 0.42 → 0.92, monotone · adjacent ΔL ≥ 0.06 ✓ · H0 vs bezel 2.13:1 ✓<br>adjacent CVD ΔE ≥ 8.1 (deutan) ✓ · labels on bars ≥ 4.5:1 ✓<br>“single hue” check deliberately waived: cool→hot is the brief, lightness carries order</p>
+  </section>
+
+  <section style="background: #e8e9ea; color: #111317; border: 1px solid #c6c9ce; padding: 20px">
+    <h2>Chassis · light (bench daylight)</h2>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px">
+      <div class="sw"><i style="background: #dcdee1"></i><span>chassis #dcdee1</span></div>
+      <div class="sw"><i style="background: #e8e9ea"></i><span>bezel #e8e9ea</span></div>
+      <div class="sw"><i style="background: #f3f4f4"></i><span>well #f3f4f4</span></div>
+      <div class="sw"><i style="background: #a3a8b0"></i><span>graticule #a3a8b0</span></div>
+      <div class="sw"><i style="background: #111317"></i><span>trace ink #111317</span></div>
+      <div class="sw"><i style="background: #3f444c"></i><span>legend #3f444c · 8.1:1</span></div>
+      <div class="sw"><i style="background: #555b64"></i><span>dim #555b64 · 5.6:1</span></div>
+      <div class="sw"><i style="background: #e8e9ea; background-image: repeating-linear-gradient(135deg, rgba(17,19,23,.14) 0 1px, transparent 1px 6px)"></i><span>hatch</span></div>
+    </div>
+    <h2 style="margin-top: 22px">Heat ramp · light · lightness flips, hot = most ink</h2>
+    <div class="ramp">
+      <i style="background: #86a6cf; color: #0e1013">H0 86a6cf</i><i style="background: #6494c1; color: #0e1013">H1 6494c1</i><i style="background: #4a84a1; color: #0e1013">H2 4a84a1</i><i style="background: #52706d; color: #fff">H3 52706d</i><i style="background: #864100; color: #fff">H4 864100</i><i style="background: #782200; color: #fff">H5 782200</i><i style="background: #5b1001; color: #fff">H6 5b1001</i>
+    </div>
+    <p class="chk" style="margin: 12px 0 0; color: #3f444c">OKLCH L 0.715 → 0.31, monotone · adjacent ΔL ≥ 0.06 ✓ · H0 vs bezel 2.06:1 ✓<br>low influence recedes into the ground in both modes · status never uses heat:<br>□ DEAD · ▲ CRITICAL · ≈ VOLATILE · ⚑ injection are glyph + word</p>
+  </section>
+
+  <section style="background: #14161a; border: 1px solid #272b32; padding: 20px">
+    <h2>Type · one family, three widths, plus a data mono</h2>
+    <div style="display: flex; flex-direction: column; gap: 14px">
+      <div><span class="l" style="color: #8a919b">Archivo wdth 125 · 800 · hero and verdicts</span><div style="font-stretch: 125%; font-weight: 800; font-size: 46px; letter-spacing: -.03em; line-height: 1">−3,176 tok</div></div>
+      <div><span class="l" style="color: #8a919b">Archivo wdth 100 · 400 · prose</span><div style="font-size: 17px; color: #a9afb8">The profiler removes parts of real requests and measures how the answer shifts.</div></div>
+      <div><span class="l" style="color: #8a919b">Archivo wdth 62–72 · 600–900 · labels, softkeys, wordmark</span><div style="font-stretch: 62%; font-weight: 900; font-size: 30px; letter-spacing: .05em; text-transform: uppercase">Context Profiler · M1 · Δ · H6</div></div>
+      <div><span class="l" style="color: #8a919b">Spline Sans Mono · 500 · tabular figures, fingerprints</span><div class="m" style="font-size: 18px">system/## Fraud warnings · 206 tok · 0.71</div></div>
+    </div>
+  </section>
+
+  <section style="background: #14161a; border: 1px solid #272b32; padding: 20px">
+    <h2>Signature components and motion</h2>
+    <ol style="margin: 0; padding: 0 0 0 20px; display: flex; flex-direction: column; gap: 10px; color: #a9afb8; font-size: 14px">
+      <li><b style="color: #e6e8eb">Token ruler.</b> Major/minor ticks re-step (5 → 2,000 tok) as you zoom, so the scale is always readable.</li>
+      <li><b style="color: #e6e8eb">Icicle stack.</b> Request → kind → segment → part. Width is tokens, heat is influence; scroll zooms at the cursor, W A S D for keys.</li>
+      <li><b style="color: #e6e8eb">M1 · M2 · Δ markers.</b> Drop two markers on the ruler; the readout sums tokens, influence and cost between them.</li>
+      <li><b style="color: #e6e8eb">Ablation raster.</b> 32 masks as a waterfall of kept and removed cells; pick a mask to read the response it produced.</li>
+      <li><b style="color: #e6e8eb">Sweep.</b> On load a single trace line crosses the stack and heat develops behind it: attribution is computed, not decorated. 1.2 s, once.</li>
+      <li><b style="color: #e6e8eb">Reduced motion.</b> Sweep, heat develop, bar glide and button lift all switch off; every state is still reachable by keyboard.</li>
+    </ol>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1360}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

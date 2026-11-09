@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Context Profiler · Segment table</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&amp;family=Spline+Sans+Mono:wght@300..700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0f1114}
+a{color:inherit}a:hover{color:inherit}
+.cpw{container-type:inline-size}
+.cp{--chassis:#0f1114;--bezel:#14161a;--well:#1a1d22;--rule:#272b32;--rule-2:#3a3f48;--ink:#e6e8eb;--ink-2:#a9afb8;--ink-3:#8a919b;--h0:#2c4d7d;--h1:#366794;--h2:#49829f;--h3:#7a9997;--h4:#dd9b5f;--h5:#ffb45b;--h6:#ffe183;--t0:#eef0f2;--t1:#eef0f2;--t2:#0e1013;--t3:#0e1013;--t4:#0e1013;--t5:#0e1013;--t6:#0e1013;--hatch:rgba(230,232,235,.16);font-family:'Archivo',system-ui,sans-serif;font-stretch:100%;background:var(--chassis);color:var(--ink);font-size:14px;line-height:1.45;min-height:100vh;box-sizing:border-box}
+.cp[data-theme="light"]{--chassis:#dcdee1;--bezel:#e8e9ea;--well:#f3f4f4;--rule:#c6c9ce;--rule-2:#a3a8b0;--ink:#111317;--ink-2:#3f444c;--ink-3:#555b64;--h0:#86a6cf;--h1:#6494c1;--h2:#4a84a1;--h3:#52706d;--h4:#864100;--h5:#782200;--h6:#5b1001;--t0:#0e1013;--t1:#0e1013;--t2:#0e1013;--t3:#fff;--t4:#fff;--t5:#fff;--t6:#fff;--hatch:rgba(17,19,23,.14)}
+@media (prefers-color-scheme: light){.cp[data-theme="auto"]{--chassis:#dcdee1;--bezel:#e8e9ea;--well:#f3f4f4;--rule:#c6c9ce;--rule-2:#a3a8b0;--ink:#111317;--ink-2:#3f444c;--ink-3:#555b64;--h0:#86a6cf;--h1:#6494c1;--h2:#4a84a1;--h3:#52706d;--h4:#864100;--h5:#782200;--h6:#5b1001;--t0:#0e1013;--t1:#0e1013;--t2:#0e1013;--t3:#fff;--t4:#fff;--t5:#fff;--t6:#fff;--hatch:rgba(17,19,23,.14)}}
+.cp *{box-sizing:border-box}
+.cp :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.mono{font-family:'Spline Sans Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.lbl{font-stretch:72%;font-weight:600;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--ink-2)}
+.dim{color:var(--ink-3)}
+.h0{background:var(--h0);color:var(--t0)}.h1{background:var(--h1);color:var(--t1)}.h2{background:var(--h2);color:var(--t2)}.h3{background:var(--h3);color:var(--t3)}.h4{background:var(--h4);color:var(--t4)}.h5{background:var(--h5);color:var(--t5)}.h6{background:var(--h6);color:var(--t6)}
+.hn{background-color:var(--well);color:var(--ink-2);background-image:repeating-linear-gradient(135deg,var(--hatch) 0 1px,transparent 1px 5px)}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 20px;padding:8px 20px;border-bottom:1px solid var(--rule);background:var(--bezel)}
+.brand{display:flex;gap:10px;text-decoration:none;min-height:44px;align-items:center}
+.brand b{font-stretch:62%;font-weight:900;font-size:21px;letter-spacing:.05em;text-transform:uppercase}
+.nav{display:flex;flex-wrap:wrap;gap:2px}
+.nav a{font-stretch:72%;font-weight:600;font-size:13px;letter-spacing:.07em;text-transform:uppercase;text-decoration:none;color:var(--ink-2);padding:0 10px;border:1px solid transparent;border-radius:2px;min-height:44px;display:inline-flex;align-items:center}
+.nav a:hover{color:var(--ink);border-color:var(--rule-2)}
+.nav a[aria-current="page"]{color:var(--ink);border-color:var(--ink)}
+.runid{margin-left:auto;font-size:12px;color:var(--ink-2)}
+.panel{background:var(--bezel);border:1px solid var(--rule);border-radius:2px;min-width:0}
+.ph{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:9px 14px;border-bottom:1px solid var(--rule)}
+.ph .n{font-family:'Spline Sans Mono',monospace;font-size:11px;color:var(--ink-3)}
+.ph h2,.ph h3{margin:0;font-stretch:72%;font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.btn{font:inherit;font-stretch:72%;font-weight:700;letter-spacing:.07em;text-transform:uppercase;font-size:12.5px;min-height:44px;padding:0 14px;border:1px solid var(--rule-2);background:transparent;color:var(--ink);border-radius:2px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;transition:transform .12s,box-shadow .12s}
+.btn:hover{border-color:var(--ink);box-shadow:3px 3px 0 var(--rule-2);transform:translate(-1px,-1px)}
+.btn.pri,.btn[aria-pressed="true"]{background:var(--ink);color:var(--chassis);border-color:var(--ink)}
+@media (prefers-reduced-motion: reduce){.cp *,.cp *::before,.cp *::after{animation:none!important;transition:none!important}}
+/* table */
+.wrap{max-width:1400px;margin:0 auto;padding:18px 20px 48px;display:flex;flex-direction:column;gap:14px}
+.title{margin:0;font-stretch:125%;font-weight:800;letter-spacing:-.02em;font-size:clamp(26px,3cqi,40px);line-height:1}
+.filters{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.fg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--rule-2);border-radius:2px}
+.fg .btn{border:0;border-radius:0}
+.fg .btn+.btn{border-left:1px solid var(--rule-2)}
+.tbox{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:980px}
+th{text-align:left;font-stretch:72%;font-weight:700;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);padding:0 10px;border-bottom:1px solid var(--rule-2);height:40px;white-space:nowrap;background:var(--bezel)}
+th.r,td.r{text-align:right}
+th button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-transform:inherit;letter-spacing:inherit;display:inline-flex;align-items:center;gap:4px;min-height:40px}
+th button:hover{color:var(--ink)}
+th[aria-sort="descending"] button{color:var(--ink);text-decoration:underline;text-underline-offset:4px}
+td{padding:0 10px;height:38px;border-bottom:1px solid var(--rule);font-family:'Spline Sans Mono',monospace;font-size:12.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:var(--well)}
+tr.on td{background:var(--well);box-shadow:inset 0 1px 0 var(--ink),inset 0 -1px 0 var(--ink)}
+tr.on td:first-child{box-shadow:inset 3px 0 0 var(--ink),inset 0 1px 0 var(--ink),inset 0 -1px 0 var(--ink)}
+.rowbtn{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:left;min-height:36px}
+.paid{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.paid i{display:block;height:8px;background:var(--ink-3)}
+.sw{display:inline-block;width:12px;height:12px;vertical-align:-1px;margin-right:8px}
+.tag{font-size:11px;border:1px solid var(--rule-2);padding:1px 6px}
+.tag.solid{background:var(--ink);color:var(--chassis);border-color:var(--ink)}
+tfoot td{font-weight:600;border-bottom:0;border-top:1px solid var(--rule-2)}
+.strip{display:flex;gap:1px;height:40px;padding:0 14px}
+.strip i{flex:1;display:block;min-width:0}
+.sand{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:0}
+.sand>div{min-width:0}
+.ro{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-left:1px solid var(--rule)}
+.ro div{padding:10px 14px;border-bottom:1px solid var(--rule)}
+.ro div:nth-child(odd){border-right:1px solid var(--rule)}
+.v{display:block;font-family:'Spline Sans Mono',monospace;font-variant-numeric:tabular-nums;font-size:18px;font-weight:500}
+@container (max-width: 900px){.sand{grid-template-columns:minmax(0,1fr)}.ro{border-left:0;border-top:1px solid var(--rule)}}
+@container (max-width: 560px){.runid{margin-left:0}.wrap{padding:14px 16px 40px}}
+</style>
+</helmet>
+<div class="cpw">
+<div class="cp" data-theme="{{theme}}">
+  <header class="bar">
+    <a class="brand" href="Main.dc.html" aria-label="Context Profiler overview">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 19h18M2 15h18"></path><path d="M3 15V11h6v4M10 15V7h5v8M16 15v-3h3v3"></path><path d="M2 3v2M7 3v2M12 3v2M17 3v2"></path></svg>
+      <b>Context Profiler</b>
+    </a>
+    <nav class="nav" aria-label="Screens">
+      <a href="Main.dc.html">Overview</a>
+      <a href="Flame.dc.html">Flame graph</a>
+      <a href="Segments.dc.html" aria-current="page">Segments</a>
+      <a href="Trace.dc.html">Traces</a>
+      <a href="Pruning.dc.html">Pruning</a>
+    </nav>
+    <span class="runid mono">run 0007 · aggregate of 200 traces</span>
+  </header>
+  <main class="wrap">
+    <div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 20px">
+      <div style="display: flex; flex-direction: column; gap: 4px; margin-right: auto">
+        <span class="lbl">Aggregated by stable fingerprint · DEAD ≈ 0 in ≥ 40 traces</span>
+        <h1 class="title">32 segments, ranked by what they cost</h1>
+      </div>
+      <span class="mono" style="font-size: 12px; color: var(--ink-2)">{{shown}} of 32 shown · Σ tokens paid {{sumPaid}}</span>
+    </div>
+
+    <div class="filters">
+      <div class="fg" role="group" aria-label="Filter by kind">
+        <sc-for list="{{kinds}}" as="k" hint-placeholder-count="6">
+          <button class="btn" type="button" aria-pressed="{{k.on}}" onClick="{{k.pick}}">{{k.name}}</button>
+        </sc-for>
+      </div>
+      <div class="fg" role="group" aria-label="Filter by label">
+        <sc-for list="{{labels}}" as="k" hint-placeholder-count="4">
+          <button class="btn" type="button" aria-pressed="{{k.on}}" onClick="{{k.pick}}">{{k.name}}</button>
+        </sc-for>
+      </div>
+    </div>
+
+    <section class="panel" aria-labelledby="t-h">
+      <div class="ph"><span class="n">03.1</span><h2 id="t-h">Fingerprints</h2><span class="dim" style="font-size: 12.5px">select a row to see its influence in every trace · sort by tokens paid or influence per 1k tokens</span></div>
+      <div class="tbox">
+        <table>
+          <caption style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Segment fingerprints aggregated across 200 traces</caption>
+          <thead>
+            <tr>
+              <th scope="col">Fingerprint</th>
+              <th scope="col">Kind</th>
+              <th scope="col">Source</th>
+              <th scope="col" class="r">Traces</th>
+              <th scope="col" class="r">Tok / req</th>
+              <th scope="col" class="r" aria-sort="{{sortPaid}}"><button type="button" onClick="{{byPaid}}">Tokens paid ↓</button></th>
+              <th scope="col" aria-sort="{{sortMean}}"><button type="button" onClick="{{byMean}}">Mean influence ↓</button></th>
+              <th scope="col" class="r">σ</th>
+              <th scope="col" class="r" aria-sort="{{sortPer}}"><button type="button" onClick="{{byPer}}">Infl / 1k tok ↓</button></th>
+              <th scope="col">Label</th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{rows}}" as="r" hint-placeholder-count="12">
+              <tr class="{{r.cls}}" onClick="{{r.pick}}">
+                <td><button class="rowbtn" type="button" onClick="{{r.pick}}" aria-pressed="{{r.on}}">{{r.fp}}</button></td>
+                <td style="color: var(--ink-2)">{{r.kind}}</td>
+                <td style="color: var(--ink-2)">{{r.src}}</td>
+                <td class="r">{{r.freq}}</td>
+                <td class="r">{{r.tok}}</td>
+                <td class="r"><span class="paid"><i style="width: {{r.paidW}}px" aria-hidden="true"></i>{{r.paid}}</span></td>
+                <td><i class="sw {{r.h}}" aria-hidden="true"></i>{{r.mean}} <span class="dim">{{r.hb}}</span></td>
+                <td class="r" style="color: var(--ink-2)">{{r.sd}}</td>
+                <td class="r">{{r.per}}</td>
+                <td><sc-if value="{{r.hasLabel}}" hint-placeholder-val="{{ false }}"><span class="tag {{r.tagCls}}">{{r.label}}</span></sc-if></td>
+              </tr>
+            </sc-for>
+          </tbody>
+          <tfoot>
+            <tr><td>Total · {{shown}} rows</td><td></td><td></td><td></td><td class="r">{{sumTok}}</td><td class="r">{{sumPaid}}</td><td></td><td></td><td></td><td></td></tr>
+          </tfoot>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="s-h">
+      <div class="ph"><span class="n">03.2</span><h2 id="s-h">Sandwich · {{sel.fp}}</h2><span class="mono dim" style="margin-left: auto; font-size: 11.5px">one cell per trace · hatched = segment absent</span></div>
+      <div class="sand">
+        <div style="padding: 14px 0">
+          <div class="strip" role="img" aria-label="{{sel.aria}}">
+            <sc-for list="{{sel.cells}}" as="c" hint-placeholder-count="40"><i class="{{c}}"></i></sc-for>
+          </div>
+          <div class="mono dim" style="display: flex; justify-content: space-between; padding: 6px 14px 0; font-size: 10.5px"><span>trace 0001</span><span>0100</span><span>0200</span></div>
+          <p style="margin: 14px 14px 0; color: var(--ink-2); font-size: 13.5px; max-width: 72ch">{{sel.story}}</p>
+        </div>
+        <div class="ro">
+          <div><span class="lbl">Present in</span><span class="v">{{sel.freq}}</span></div>
+          <div><span class="lbl">Mean ± σ</span><span class="v">{{sel.mean}} ± {{sel.sd}}</span></div>
+          <div><span class="lbl">Tokens paid</span><span class="v">{{sel.paid}}</span></div>
+          <div><span class="lbl">Cost / 100k req</span><span class="v">{{sel.cost}}</span></div>
+          <div style="grid-column: 1 / -1; border-right: 0; display: flex; gap: 8px; flex-wrap: wrap">
+            <a class="btn pri" href="Flame.dc.html">Locate in flame graph</a>
+            <a class="btn" href="Pruning.dc.html">Pruning diff</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light","auto"],"default":"dark"},"$preview":{"width":1440,"height":1500}}'>
+class Component extends DCLogic {
+  bin(v) { return v < .05 ? 0 : v < .15 ? 1 : v < .25 ? 2 : v < .40 ? 3 : v < .55 ? 4 : v < .70 ? 5 : 6; }
+  fmt(n) { return Math.round(n).toLocaleString('en-US'); }
+  k(n) { return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n); }
+  data() {
+    if (this._d) return this._d;
+    var R = [
+      ['system/## Role','system','trusted',200,142,.61,.07,'CRITICAL'],['system/## Tone rules','system','trusted',200,236,.29,.09,''],['system/## Escalation to human agent','system','trusted',200,188,.22,.21,'VOLATILE'],['system/## Refund policy (2023, legacy)','system','trusted',200,410,.01,.01,'DEAD'],['system/## Swahili & Sheng replies','system','trusted',200,164,.38,.19,''],['system/## Company history','system','trusted',200,322,0,0,'DEAD'],['system/## Fraud warnings','system','trusted',200,206,.46,.24,'VOLATILE'],['system/## Formatting','system','trusted',200,118,.17,.05,''],['system/## Holiday hours 2024','system','trusted',200,262,.02,.01,'DEAD'],
+      ['tool/search_jobs','tool','trusted',200,486,.57,.18,'CRITICAL'],['tool/get_application_status','tool','trusted',200,352,.55,.22,'CRITICAL'],['tool/get_job','tool','trusted',200,298,.34,.17,''],['tool/apply_to_job','tool','trusted',200,344,.02,.02,'DEAD'],['tool/schedule_interview','tool','trusted',200,318,.01,.06,'DEAD'],['tool/upload_cv','tool','trusted',200,276,.01,.01,'DEAD'],['tool/get_salary_band','tool','trusted',200,302,.07,.14,'VOLATILE'],['tool/translate_text','tool','trusted',200,264,.01,.02,'DEAD'],['tool/list_counties','tool','trusted',200,188,0,0,'DEAD'],['tool/report_listing','tool','trusted',200,254,.05,.12,'VOLATILE'],['tool/convert_currency','tool','trusted',200,230,0,0,'DEAD'],['tool/get_weather','tool','trusted',200,300,0,0,'DEAD'],
+      ['rag/kb:application-status#1','retrieved','trusted',118,412,.49,.16,''],['rag/kb:cv-tips#3','retrieved','trusted',64,286,.11,.08,''],['rag/listing:*','retrieved','untrusted',141,330,.41,.27,'VOLATILE'],['rag/kb:press-2019#2','retrieved','trusted',143,318,0,0,'DEAD'],['rag/kb:office-locations#4','retrieved','trusted',97,262,.02,.02,'DEAD'],['rag/kb:fraud-faq#1','retrieved','trusted',52,268,.36,.14,''],
+      ['history/user −2','history','untrusted',121,98,.07,.06,''],['history/assistant −2','history','trusted',121,220,.05,.05,''],['history/user −1','history','untrusted',174,118,.16,.12,''],['history/assistant −1','history','trusted',174,342,.17,.10,''],
+      ['user/current','user','user input',200,52,.90,.05,'CRITICAL']
+    ];
+    var STORY = {
+      'rag/listing:*': 'Employer-written listings are untrusted. In 14 of the 141 traces that retrieved one, a listing body reached the top 1% of influence: the injection signal. Trace 0142 is the clearest: a KSh 2,000 “registration fee” line was quoted back to the applicant. Never pruned; flagged for review.',
+      'tool/schedule_interview': 'Near zero on average, but σ is six times the mean: two traces (0033, 0151) asked to reschedule and needed it. The pruning verifier caught the regression and the schema was restored.',
+      'system/## Refund policy (2023, legacy)': 'The single largest cost with no measurable effect: 410 tokens in every request, influence ≤ 0.03 in all 200 traces. Refunds moved to the payments team in 2024.',
+      'tool/get_salary_band': 'Mostly idle, sometimes decisive: salary questions in Swahili light it up. VOLATILE segments are never auto-pruned.'
+    };
+    this._d = { R: R, STORY: STORY };
+    return this._d;
+  }
+  rnd(seed) { var x = Math.sin(seed * 9301.17 + 49297.3) * 233280.7; return x - Math.floor(x); }
+  renderVals() {
+    var self = this, d = this.data(), st = this.state || {};
+    var sort = st.sort || 'paid', kind = st.kind || 'all', lab = st.lab || 'all', selFp = st.sel || 'rag/listing:*';
+    var rows = d.R.map(function (r) { return { fp: r[0], kind: r[1], src: r[2], freq: r[3], tok: r[4], mean: r[5], sd: r[6], label: r[7], paid: r[3] * r[4], per: r[5] / r[4] * 1000 }; });
+    var maxPaid = 0; rows.forEach(function (r) { maxPaid = Math.max(maxPaid, r.paid); });
+    var f = rows.filter(function (r) { return (kind === 'all' || r.kind === kind) && (lab === 'all' || r.label === lab); });
+    f.sort(function (a, b) { return sort === 'paid' ? b.paid - a.paid : sort === 'mean' ? b.mean - a.mean : b.per - a.per; });
+    var sumPaid = 0, sumTok = 0; f.forEach(function (r) { sumPaid += r.paid; sumTok += r.tok; });
+    var out = f.map(function (r) {
+      var h = self.bin(r.mean);
+      return { fp: r.fp, kind: r.kind, src: r.src, freq: r.freq, tok: self.fmt(r.tok), paid: self.k(r.paid), paidW: Math.max(2, Math.round(r.paid / maxPaid * 90)),
+        mean: r.mean.toFixed(2), hb: 'H' + h, h: 'h' + h, sd: r.sd.toFixed(2), per: r.per.toFixed(2), label: r.label, hasLabel: !!r.label,
+        tagCls: r.label === 'DEAD' ? '' : 'solid', on: r.fp === selFp, cls: r.fp === selFp ? 'on' : '',
+        pick: function (e) { if (e && e.stopPropagation) e.stopPropagation(); self.setState({ sel: r.fp }); } };
+    });
+    var kinds = [['all', 'All'], ['system', 'System'], ['tool', 'Tools'], ['retrieved', 'Retrieved'], ['history', 'History'], ['user', 'User']].map(function (k) { return { name: k[1], on: kind === k[0], pick: function () { self.setState({ kind: k[0] }); } }; });
+    var labels = [['all', 'Any label'], ['DEAD', '□ Dead'], ['CRITICAL', '▲ Critical'], ['VOLATILE', '≈ Volatile']].map(function (k) { return { name: k[1], on: lab === k[0], pick: function () { self.setState({ lab: k[0] }); } }; });
+    var s = rows.filter(function (r) { return r.fp === selFp; })[0] || rows[0];
+    var seed = 0; for (var i = 0; i < s.fp.length; i++) seed += s.fp.charCodeAt(i) * (i + 1);
+    var cells = [];
+    for (var t = 0; t < 200; t++) {
+      var present = self.rnd(seed + t * 3.1) < s.freq / 200;
+      if (!present) { cells.push('hn'); continue; }
+      var u = self.rnd(seed + t * 7.7) + self.rnd(seed + t * 1.3) + self.rnd(seed + t * 5.9) - 1.5;
+      var v = Math.max(0, Math.min(1, s.mean + u * s.sd * 2));
+      if (s.fp === 'tool/schedule_interview' && (t === 32 || t === 150)) v = .62;
+      if (s.fp === 'rag/listing:*' && t === 141) v = .74;
+      cells.push('h' + self.bin(v));
+    }
+    var story = d.STORY[s.fp] || (s.label === 'DEAD' ? 'Influence stayed near zero in every trace that carried it. A candidate for the pruning diff, pending verification on held-out traces.' : s.label === 'CRITICAL' ? 'Consistently high influence. Keep it, and keep it near the top of the window.' : 'Moderate, steady influence. Worth keeping; tighten the wording before cutting it.');
+    var dir = function (k) { return sort === k ? 'descending' : 'none'; };
+    return {
+      theme: this.props.theme ?? 'dark', rows: out, kinds: kinds, labels: labels, shown: f.length,
+      sumPaid: self.k(sumPaid), sumTok: self.fmt(sumTok),
+      sortPaid: dir('paid'), sortMean: dir('mean'), sortPer: dir('per'),
+      byPaid: function () { self.setState({ sort: 'paid' }); }, byMean: function () { self.setState({ sort: 'mean' }); }, byPer: function () { self.setState({ sort: 'per' }); },
+      sel: { fp: s.fp, freq: s.freq + ' / 200', mean: s.mean.toFixed(2), sd: s.sd.toFixed(2), paid: self.k(s.paid), cost: '$' + (s.tok * 3 / 1e6 * 1e5 * s.freq / 200).toFixed(2), cells: cells, story: story,
+        aria: 'Influence of ' + s.fp + ' in each of 200 traces; present in ' + s.freq + ', mean ' + s.mean.toFixed(2) }
+    };
+  }
+}
+</script>
+</body>
+</html>

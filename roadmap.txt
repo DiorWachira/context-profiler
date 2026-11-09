@@ -1,0 +1,295 @@
+CONTEXT PROFILER — ROADMAP AND HAND-OFF
+=======================================
+Last updated: 9 Nov 2026. Owner: Dior Wachira.
+Read this file first when resuming (e.g. Claude Code in the VS Code terminal). It says what
+exists, why it was built this way, how to run and check it, and exactly what to build next.
+
+
+0. HOW TO RESUME IN 60 SECONDS
+------------------------------
+  cd "C:\dev\Context Profiler"
+  .venv\Scripts\python -m pytest -q          # must be green (17 tests) before you change anything
+  .venv\Scripts\ctxprof demo                 # rebuilds ctxprof.db: 200 traces, profiled (~75 s)
+  .venv\Scripts\ctxprof aggregate            # the ranked fingerprint table
+  cd web && npm run build && cd ..
+  .venv\Scripts\ctxprof serve                # http://127.0.0.1:8000
+
+  If .venv is missing:   py -3.12 -m venv .venv
+                         .venv\Scripts\python -m pip install -e ".[dev]"
+  If web/node_modules is missing:   cd web && npm install
+
+  Suggested opening prompt for Claude Code:
+    "Read roadmap.txt and README.md. Run the tests. Then start milestone M4 (section 5),
+     plan first, keep tests green, don't commit until I say so."
+
+
+1. WHAT THIS IS
+---------------
+An offline profiler for LLM context windows. It samples real requests, ablates segments
+(system-prompt sections, tool schemas, retrieved chunks, prior turns), scores how much the answer
+changes, fits a sparse linear surrogate (Lasso, the ContextCite method, NeurIPS 2024), aggregates
+across hundreds of traces, and ranks segments by tokens paid × influence. The output is meant to
+be a pull request: "these segments had ~zero influence across N traces; removing them cuts input
+tokens by X%; your eval still passes." X must be measured, never a target.
+
+Interview line: "I built a profiler that tells you which parts of a prompt you're paying for but
+not using, and proves removing them is safe."
+
+Spec source: section 3 of "Project Ideas Lab — 10 Build Specs for Dior.docx" (Downloads).
+Non-goal: no real-time production proxy.
+
+
+2. CURRENT STATE (what is DONE and verified)
+--------------------------------------------
+Milestones from the spec, and where each stands:
+
+  M1 Trace importer, segmenter, token counting, flame graph of tokens .......... DONE
+  M2 Attribution engine + synthetic ground-truth tests ......................... DONE (fake model)
+       - logprob mode against a REAL local model ................................ NOT DONE (see 5.2)
+  M3 Black-box mode, aggregation, DEAD/CRITICAL/VOLATILE labels ................ DONE
+       - injection signal (spec lists it under M4) .............................. DONE
+  M4 Pruning diff + verification + cost report ................................. NOT STARTED
+  M5 Case study, README method/limitations, mode comparison .................... README drafted
+
+Verified on 9 Nov 2026:
+  - pytest: 17 passed. ruff: clean.
+  - web: `npm run build` (tsc + vite) clean. UI loads; no console errors; no horizontal
+    overflow at 375 px on Overview, Segments and Trace pages (checked in the browser pane).
+  - Demo run (fake model, 200 traces, 32 masks, logprob mode, heuristic tokens):
+      mean request 4,376 tokens; 33 fingerprints; 18 DEAD; DEAD = 2,425 tokens/request on
+      average (55% of the window); held-out R² high (0 poor-fit traces); 6,597 model calls,
+      estimated spend $48.63 at $3/M input (fake model costs nothing; the estimate is what a
+      hosted model would cost); 8 injection signals, all on the scam traces' injected listing.
+    These are fake-model numbers. They prove the pipeline, not real-world savings.
+  - Known demo finding that M4 MUST handle: tool/report_listing and tool/schedule_interview are
+    needed in a few % of traces. report_listing comes out DEAD (sd 0.10 < 0.15), schedule_interview
+    comes out VOLATILE. Verification on held-out traces is what catches report_listing.
+
+NOT verified:
+  - No real model has been run (no Ollama / vLLM / hosted API calls yet).
+  - tiktoken counter is wired but untested (optional dependency, needs a download).
+  - OpenAICompatProvider is untested against a live server (no test with httpx MockTransport yet).
+  - The UI has not been screenshot-reviewed in light mode or on a phone; only DOM/overflow checks.
+  - No git repo yet (see section 8).
+
+
+3. ARCHITECTURE AND FILE MAP
+----------------------------
+Python 3.12 package `ctxprof` (src layout), Typer CLI, FastAPI, SQLite, scikit-learn, numpy.
+Frontend: React 18 + Vite 6 + TypeScript 5.6, no UI libraries.
+
+  src/ctxprof/
+    models.py        Pydantic models: Message, Tool, Request, Response, Trace, Segment, Locator, Span.
+                     A Locator says how to remove a segment: tool index | whole message | char spans.
+    tokens.py        TokenCounter protocol. HeuristicCounter (default, deterministic, no deps) and
+                     TiktokenCounter (optional extra: pip install -e ".[tiktoken]").
+    segmenter.py     SegmenterConfig (YAML) + segment_trace(). Rules: each tool = segment; docs carved
+                     out of any message by regex; system messages split by markdown headings; last user
+                     message = user/current; earlier messages = history/<role> -<distance>.
+                     fingerprint_rewrites (regex) merge per-request ids, e.g. rag/listing:* .
+    masking.py       sample_masks() (guarantees each segment is kept and dropped at least once) and
+                     apply_mask() (removes spans/messages/tools, repairs tool_call/tool_result pairs).
+    importers/       jsonl.py (OpenAI and Anthropic shapes) and otel_genai.py. ALL OpenTelemetry GenAI
+                     attribute names live in otel_genai.MAPPING because the conventions are still in
+                     development status: change only that table when they move.
+    providers/       base.py (async Provider: generate, optional target_logprob),
+                     fake.py (FakeProvider: deterministic ground-truth model built from Effects),
+                     openai_compat.py (any OpenAI-compatible chat endpoint; black-box mode only).
+    scoring.py       logprob -> logit score; black-box metrics: char-3-gram cosine text similarity,
+                     tool-call agreement, JSON field agreement, "auto".
+    surrogate.py     fit_surrogate(): LassoCV (alpha by CV) on a train split -> held-out R²; refit on
+                     all masks; bootstrap 95% CIs. normalise(): influence = weight / max(top weight,
+                     min_effect), clipped to [-1, 1].
+    attribution.py   ProfileConfig, CallGate (cache + hard budget + semaphore), profile_trace(),
+                     run_profile(). Pins the current user turn (see decision D1).
+    aggregate.py     aggregate() per fingerprint: traces, tokens mean/paid, mean/sd/p95 influence,
+                     influence per 1k tokens, label. injection_signals(). LabelRules holds thresholds.
+    flame.py         flame_tree(): request -> kind -> segment, with token offsets for the ruler.
+    storage.py       SQLite schema: traces, segments, runs, trace_fits, attributions (NULL weight =
+                     pinned), ablations, calls (the cache). Store class.
+    server.py        FastAPI: /api/health, /api/runs, /api/traces, /api/traces/{id},
+                     /api/traces/{id}/flame, /api/runs/{id}/aggregate. Serves web/dist at /.
+    cli.py           ctxprof import | profile | aggregate | flame | prune* | verify* | serve | demo
+                     (* = M4 stubs that exit with code 2).
+    demo.py          The bloated JobBridge support agent: ~2,000-token system prompt (9 sections),
+                     12 tools, KB + employer listings (some with an injected "registration fee"),
+                     200 traces in English and Sheng, and demo_effects() = the ground truth.
+  tests/             test_segmenter, test_masking, test_importers, test_attribution (synthetic ground
+                     truth, cache, budget, black-box, labels, injection), test_server.
+  web/src/
+    styles.css       Graticule design tokens (dark default, light via prefers-color-scheme or
+                     <html data-theme="light|dark">), all component CSS, reduced-motion fallback.
+    components/Flame.tsx   The signature flame graph (see section 6).
+    views/Overview.tsx     Run summary, DEAD list, top influence/1k, injection signals, trace list.
+    views/Segments.tsx     Aggregated table, sortable (tokens paid / mean / per 1k), kind/label filters.
+    views/TraceView.tsx    Flame + selected rail + drill-down (ablation raster, original response,
+                           surrogate weights with CI).
+    api.ts / heat.ts / hooks.ts   Typed API client, influence->heat bins, a tiny loader hook.
+  examples/demo/     Generated by `ctxprof demo` (git-ignored): traces.jsonl, segmenter.yaml,
+                     prompt/system.md, prompt/tools.json (the prompt bundle M4 will diff).
+  ctxprof.db         Generated SQLite DB (git-ignored).
+
+
+4. KEY DECISIONS (and why — keep them unless you have a reason)
+---------------------------------------------------------------
+D1 Pin the current user turn (ProfileConfig.pin_kinds = ("user",)). The question is not context
+   (ContextCite attributes to context sources). Ablating it made every other effect conditional
+   on it (an AND), which a linear surrogate cannot fit: a dead section got weight 0.36 in testing.
+   Pinned segments are stored with NULL weight and shown as "not scored" (hatched) in the UI.
+D2 Influence = weight / max(strongest positive weight, min_effect). Comparable across traces and
+   0..1 for heat. The floor (0.5 nats logprob, 0.05 black-box) stops traces where nothing matters
+   from inflating noise to 1. Raw weights are stored too.
+D3 Labels: CRITICAL if mean >= 0.5; else VOLATILE if sd >= 0.15; else DEAD if >= 20 traces,
+   |mean| < 0.05 and p95(|influence|) < 0.10. VOLATILE is never auto-pruned. Thresholds live in
+   LabelRules; the spec's "M traces" is min_traces.
+D4 Poor fit = held-out R² < 0.5; such traces are excluded from aggregation and counted in the UI.
+D5 Every model call is cached by sha256(kind, provider, model, params, masked request, target).
+   Re-runs are free and reproducible. Cache inserts commit with the trace's results (fast).
+D6 Budget is a hard cap checked BEFORE each uncached call using a token-count estimate; a run that
+   hits it stops cleanly with status "budget" and keeps finished traces.
+D7 Temperature is forced to 0 on replays (force_temperature_zero).
+D8 Heuristic token counter by default for determinism; use --counter tiktoken for real numbers.
+D9 Fake model (FakeProvider + Effects) is the ground truth: an effect fires only if its gate words
+   are in the user question and its "needs" substrings are in the request; it adds weight nats to
+   the original answer's log-probability. A correct method must recover exactly those segments.
+D10 Colour means influence only. Status (DEAD/CRITICAL/VOLATILE/injection) is glyph + word.
+    Removed diff lines (M4) must be hatched/struck, NOT red.
+
+
+5. NEXT WORK, IN ORDER (each with "done when")
+----------------------------------------------
+5.1 M4 — Pruning diff + verification + cost report   <-- START HERE
+  a. src/ctxprof/prune.py
+     - Input: a "prompt bundle" directory (see examples/demo/prompt: system.md + tools.json; add an
+       optional retriever.yaml with an exclude list for chunk ids) + a run id + LabelRules.
+     - Remove DEAD system sections (match by heading), DEAD tool schemas (by name), and add DEAD
+       chunk ids to the retriever exclude list. Never remove VOLATILE, CRITICAL, untrusted-flagged
+       or pinned segments. Support --keep FINGERPRINT (repeatable) to override.
+     - Output a unified diff (difflib.unified_diff) to stdout or --out prompt.diff, plus the pruned
+       bundle in --write DIR.
+     Done when: tests cover the diff writer (heading removal, tool removal, exclude list, --keep).
+  b. src/ctxprof/verify.py
+     - Choose held-out traces (not used for profiling, or a --held-out K random sample with a fixed
+       seed). For each: replay the ORIGINAL request and the PRUNED request (apply the same removals
+       to the trace; reuse masking.apply_mask with a keep-vector built from the pruned
+       fingerprints). Compare outcomes with the black-box metric (or a user eval command:
+       --eval "python my_eval.py {original} {pruned}" returning exit code 0/1).
+     - Report: tokens before/after, % reduction, cost before/after at --price-in, agreement rate,
+       list of regressions (trace id, fingerprint suspected, both responses).
+     - Recommend only if agreement >= --threshold (default 0.95). Exit code 0 = recommend, 1 = not.
+     - Persist a `prunes` table (run_id, diff, removed fingerprints, tokens saved, agreement,
+       regressions JSON, created_at).
+     Done when: on the demo, verify finds the report_listing regression on scam traces; with
+       --keep tool/report_listing (and tool/schedule_interview) it passes the threshold. Record the
+       real numbers in README.
+  c. CLI: replace the prune/verify stubs. API: GET /api/prunes, GET /api/prunes/{id}.
+  d. UI: Pruning report page (#/pruning) from the design: verdict stamp, ledger (tokens, cost,
+     saved per 100k requests in USD and KSh at a configurable rate), the diff with a "Cut" checkbox
+     per hunk that recomputes the ledger and verdict from stored per-hunk verification results,
+     the held-out grid (agree cells filled, regressions hollow with ×), budget meter.
+     Done when: page works at 375 px, keyboard-only, reduced motion; build clean.
+
+5.2 M2 completion — logprob mode on a real local model
+  - Add a provider that returns teacher-forced log-probabilities of a target response. Options to
+    investigate (verify against current docs before building): vLLM's OpenAI-compatible server
+    (completions with echo/prompt logprobs), llama.cpp server, or Hugging Face transformers run
+    locally (exact, slow, simplest to trust). Render the chat template to a prompt string, append
+    the target, sum the target tokens' logprobs.
+  - Test with a tiny model; mark the test as "slow"/optional (pytest -m "not slow" by default).
+  Done when: `ctxprof profile --provider vllm --mode logprob` runs on 5 demo-like traces against a
+  real model and the README compares logprob vs black-box rankings (Spearman, top-5 overlap).
+
+5.3 Black-box with embeddings
+  - Add an Embedder protocol (OpenAI-compatible /embeddings) and metric "embedding" (cosine).
+  - Add OpenAICompatProvider tests with httpx.MockTransport (payload shape, tool calls, errors).
+
+5.4 Engine quality
+  - Concurrency across traces (today traces run sequentially; masks within a trace are concurrent).
+  - Optional pairwise-interaction check: for top segments, report whether removing two together
+    differs from the sum of removing each (flags non-linear traces beyond R²).
+  - Configurable p_keep and number of masks per trace size (more masks for more segments:
+    ContextCite suggests N on the order of the number of sources).
+  - Sub-segments (tool description / parameters / examples; listing title / body) as depth-3
+    nodes in the flame graph (model has a `parent` field reserved; flame.py supports children).
+
+5.5 UI polish and tests
+  - Theme toggle button (sets <html data-theme>), persisted in localStorage (try/catch).
+  - Trace list filters (intent from meta, poor fit, injection) and search by trace id.
+  - Playwright e2e: overview -> trace -> zoom with keyboard -> marker readout; segments sort;
+    no horizontal overflow at 375 px; prefers-reduced-motion disables sweep.
+  - Screenshot review in dark, light and phone widths.
+  - Colour check: the heat ramps were validated with the dataviz validator (ordinal mode: monotone
+    lightness, adjacent ΔL >= 0.06, end contrast >= 2:1, bar label text >= 4.5:1). The "single
+    hue" check fails on purpose (cool->hot was the brief). Re-validate if you change a step.
+
+5.6 M5 — Case study
+  - Run on the demo AND one of Dior's real prompts (e.g. RepoLens Examiner or JobBridge
+    explanations) with a real model; report real numbers: token reduction, cost, agreement,
+    regressions; method, limitations (interactions, cost ~N×, linearity), logprob vs black-box.
+  - Acceptance criteria from the spec: (1) synthetic fake-model top-k = true causal segments
+    (DONE: tests/test_attribution.py), (2) demo produces a pruning diff with measured token
+    savings and a verification pass rate (M4), (3) a full run respects its budget cap and is
+    reproducible from cache (DONE: test_cache_makes_rerun_free_and_budget_caps_spend).
+
+5.7 Engineering hygiene
+  - git init + first commit (section 8), GitHub Actions: ruff, pytest, web typecheck + build.
+  - mypy (or pyright) on src/.
+
+
+6. DESIGN SYSTEM ("Graticule")
+------------------------------
+Design canvas (Claude Design artifact, private): https://claude.ai/artifact/4YvZrWGN3bp9twR967EvAj
+Its source files (one .dc.html per artboard + canvas.json) are kept in design/canvas/ for reference.
+Screens there: Overview, Flame graph (signature), Segment table, Trace drill-down, Pruning report,
+375 px board, system sheet. The web UI implements Overview, Flame, Segments and Trace so far.
+
+Concept: a bench spectrum analyser for the context window: a token ruler on top, the flame stack,
+M1/M2 delta markers, a detail rail.
+  - Type: Archivo with its width axis (wdth 125 hero, 100 prose, 62–72 labels/wordmark) +
+    Spline Sans Mono (tabular) for all data. Loaded from Google Fonts in web/index.html.
+  - Palette: graphite chassis/bezel/well/graticule + one heat ramp H0..H6 used ONLY for influence.
+      dark  H0..H6: #2c4d7d #366794 #49829f #7a9997 #dd9b5f #ffb45b #ffe183 (surface #14161a)
+      light H0..H6: #86a6cf #6494c1 #4a84a1 #52706d #864100 #782200 #5b1001 (surface #e8e9ea)
+    Bins (web/src/heat.ts): <.05, .05, .15, .25, .40, .55, >=.70.
+  - Signature interaction: scroll zooms at the cursor through the window (ruler ticks re-step),
+    Shift+scroll pans, W/A/S/D/F/0 on the focused stack, minimap brush, ruler drops M1/M2 and the
+    readout sums tokens, influence and cost between them. A one-time "sweep" line develops the heat
+    on load. All motion off under prefers-reduced-motion.
+  - Rules: 2 px radii, hard 3 px offset shadow on hover, no gradients/glass/glow, visible focus,
+    44 px targets, WCAG AA text.
+  - Do NOT reuse across Dior's other portfolio projects (each must look different).
+
+
+7. CONVENTIONS
+--------------
+  - Plan first per milestone; tests and green checks before moving on.
+  - Run before saying "done": pytest -q, ruff check src tests, (cd web && npm run build).
+  - Real, plausible content only (Kenyan context where it fits: KSh, Sheng, counties).
+  - Keep the OTel attribute mapping in importers/otel_genai.py only.
+  - Never commit secrets. API keys come from env CTXPROF_API_KEY.
+  - Git: DiorWachira must be the ONLY contributor. Never add "Co-Authored-By: Claude",
+    "Generated with Claude Code" or similar trailers to commits or PR bodies. Commit with the
+    existing global git identity. Commit/push only when Dior asks.
+
+
+8. NOT YET DONE ON THIS MACHINE
+-------------------------------
+  - The folder is not a git repository. When ready:
+      git init -b main
+      git add .
+      git commit -m "Context Profiler: M1-M3 engine, API and flame graph UI"
+  - .claude/launch.json defines a "ctxprof" preview config for the Claude desktop app's browser
+    pane (runs `ctxprof serve --port 8000`).
+
+
+9. GLOSSARY
+-----------
+  segment      a removable piece of the request (section, tool, chunk, turn).
+  fingerprint  stable id for a segment across traces, e.g. "system/## Tone rules", "tool/search_jobs",
+               "rag/listing:*", "history/user -1".
+  mask         one ablation: which segments are kept (True) or removed (False).
+  weight       Lasso coefficient for a segment (score units: nats in logprob mode).
+  influence    weight relative to the trace's strongest segment, clipped to [-1, 1].
+  tokens paid  sum of a fingerprint's tokens over all traces that carried it.
+  DEAD / CRITICAL / VOLATILE   aggregate labels (section 4, D3).
+  injection signal   an untrusted, non-user segment in the top 10% of its trace with influence >= 0.3.

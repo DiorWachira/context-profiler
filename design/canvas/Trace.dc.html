@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Context Profiler · Trace drill-down</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&amp;family=Spline+Sans+Mono:wght@300..700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0f1114}
+a{color:inherit}a:hover{color:inherit}
+.cpw{container-type:inline-size}
+.cp{--chassis:#0f1114;--bezel:#14161a;--well:#1a1d22;--rule:#272b32;--rule-2:#3a3f48;--ink:#e6e8eb;--ink-2:#a9afb8;--ink-3:#8a919b;--h0:#2c4d7d;--h1:#366794;--h2:#49829f;--h3:#7a9997;--h4:#dd9b5f;--h5:#ffb45b;--h6:#ffe183;--t0:#eef0f2;--t1:#eef0f2;--t2:#0e1013;--t3:#0e1013;--t4:#0e1013;--t5:#0e1013;--t6:#0e1013;--hatch:rgba(230,232,235,.16);font-family:'Archivo',system-ui,sans-serif;font-stretch:100%;background:var(--chassis);color:var(--ink);font-size:14px;line-height:1.45;min-height:100vh;box-sizing:border-box}
+.cp[data-theme="light"]{--chassis:#dcdee1;--bezel:#e8e9ea;--well:#f3f4f4;--rule:#c6c9ce;--rule-2:#a3a8b0;--ink:#111317;--ink-2:#3f444c;--ink-3:#555b64;--h0:#86a6cf;--h1:#6494c1;--h2:#4a84a1;--h3:#52706d;--h4:#864100;--h5:#782200;--h6:#5b1001;--t0:#0e1013;--t1:#0e1013;--t2:#0e1013;--t3:#fff;--t4:#fff;--t5:#fff;--t6:#fff;--hatch:rgba(17,19,23,.14)}
+@media (prefers-color-scheme: light){.cp[data-theme="auto"]{--chassis:#dcdee1;--bezel:#e8e9ea;--well:#f3f4f4;--rule:#c6c9ce;--rule-2:#a3a8b0;--ink:#111317;--ink-2:#3f444c;--ink-3:#555b64;--h0:#86a6cf;--h1:#6494c1;--h2:#4a84a1;--h3:#52706d;--h4:#864100;--h5:#782200;--h6:#5b1001;--t0:#0e1013;--t1:#0e1013;--t2:#0e1013;--t3:#fff;--t4:#fff;--t5:#fff;--t6:#fff;--hatch:rgba(17,19,23,.14)}}
+.cp *{box-sizing:border-box}
+.cp :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.mono{font-family:'Spline Sans Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.lbl{font-stretch:72%;font-weight:600;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--ink-2)}
+.dim{color:var(--ink-3)}
+.h0{background:var(--h0);color:var(--t0)}.h1{background:var(--h1);color:var(--t1)}.h2{background:var(--h2);color:var(--t2)}.h3{background:var(--h3);color:var(--t3)}.h4{background:var(--h4);color:var(--t4)}.h5{background:var(--h5);color:var(--t5)}.h6{background:var(--h6);color:var(--t6)}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 20px;padding:8px 20px;border-bottom:1px solid var(--rule);background:var(--bezel)}
+.brand{display:flex;gap:10px;text-decoration:none;min-height:44px;align-items:center}
+.brand b{font-stretch:62%;font-weight:900;font-size:21px;letter-spacing:.05em;text-transform:uppercase}
+.nav{display:flex;flex-wrap:wrap;gap:2px}
+.nav a{font-stretch:72%;font-weight:600;font-size:13px;letter-spacing:.07em;text-transform:uppercase;text-decoration:none;color:var(--ink-2);padding:0 10px;border:1px solid transparent;border-radius:2px;min-height:44px;display:inline-flex;align-items:center}
+.nav a:hover{color:var(--ink);border-color:var(--rule-2)}
+.nav a[aria-current="page"]{color:var(--ink);border-color:var(--ink)}
+.runid{margin-left:auto;font-size:12px;color:var(--ink-2)}
+.panel{background:var(--bezel);border:1px solid var(--rule);border-radius:2px;min-width:0}
+.ph{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:9px 14px;border-bottom:1px solid var(--rule)}
+.ph .n{font-family:'Spline Sans Mono',monospace;font-size:11px;color:var(--ink-3)}
+.ph h2,.ph h3{margin:0;font-stretch:72%;font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.btn{font:inherit;font-stretch:72%;font-weight:700;letter-spacing:.07em;text-transform:uppercase;font-size:12.5px;min-height:44px;padding:0 14px;border:1px solid var(--rule-2);background:transparent;color:var(--ink);border-radius:2px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;transition:transform .12s,box-shadow .12s}
+.btn:hover{border-color:var(--ink);box-shadow:3px 3px 0 var(--rule-2);transform:translate(-1px,-1px)}
+.btn.pri,.btn[aria-pressed="true"]{background:var(--ink);color:var(--chassis);border-color:var(--ink)}
+@media (prefers-reduced-motion: reduce){.cp *,.cp *::before,.cp *::after{animation:none!important;transition:none!important}}
+/* trace */
+.wrap{max-width:1400px;margin:0 auto;padding:18px 20px 48px;display:flex;flex-direction:column;gap:14px}
+.title{margin:0;font-stretch:125%;font-weight:800;letter-spacing:-.02em;font-size:clamp(26px,3cqi,40px);line-height:1}
+.fg{display:inline-flex;border:1px solid var(--rule-2);border-radius:2px}
+.fg .btn{border:0;border-radius:0}
+.fg .btn+.btn{border-left:1px solid var(--rule-2)}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.msg{padding:14px;display:flex;flex-direction:column;gap:8px}
+.sw-text{font-size:17px;line-height:1.5;margin:0}
+.gloss{margin:0;color:var(--ink-2);font-size:13.5px}
+.meta{display:flex;flex-wrap:wrap;gap:4px 16px;padding:10px 14px;border-top:1px solid var(--rule);font-family:'Spline Sans Mono',monospace;font-size:11.5px;color:var(--ink-3)}
+.main2{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:14px;align-items:start}
+.rbox{overflow-x:auto;padding:12px 14px 14px}
+.raster{min-width:620px;display:flex;flex-direction:column;gap:2px}
+.rhead{display:grid;grid-template-columns:34px minmax(0,1fr) 92px;gap:8px;align-items:end}
+.kinds{display:grid;gap:2px}
+.kinds span{font-stretch:72%;font-weight:600;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);border-bottom:2px solid var(--ink-3);padding-bottom:2px;overflow:hidden;white-space:nowrap}
+.mrow{display:grid;grid-template-columns:34px minmax(0,1fr) 92px;gap:8px;align-items:center;font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:left;width:100%;min-height:15px}
+.mrow:hover .cells,.mrow.on .cells{outline:1px solid var(--ink);outline-offset:1px}
+.mrow.on{background:var(--well)}
+.cells{display:grid;gap:2px;height:13px}
+.cells i{display:block}
+.cells i.k{background:var(--ink-2)}
+.cells i.x{background:transparent;box-shadow:inset 0 0 0 1px var(--rule-2)}
+.cells i.colsel.k{background:var(--ink)}
+.sc{display:flex;align-items:center;gap:6px;font-family:'Spline Sans Mono',monospace;font-size:10.5px;color:var(--ink-2)}
+.sc b{display:block;height:6px;background:var(--ink-3)}
+.wts{display:flex;flex-direction:column}
+.w{display:grid;grid-template-columns:minmax(0,190px) minmax(0,1fr) 52px;gap:10px;align-items:center;padding:6px 14px;border-bottom:1px solid var(--rule);font-family:'Spline Sans Mono',monospace;font-size:12px}
+.w .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.track{position:relative;height:14px;border-left:1px solid var(--ink-3)}
+.track b{position:absolute;top:2px;bottom:2px;left:0;transition:width .3s ease-out}
+.track s{position:absolute;top:6px;height:2px;background:var(--ink);text-decoration:none}
+.track s::before,.track s::after{content:"";position:absolute;top:-4px;width:1px;height:10px;background:var(--ink)}
+.track s::before{left:0}.track s::after{right:0}
+.ro{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+.ro div{padding:10px 14px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);min-width:0}
+.ro div:last-child{border-right:0}
+.v{display:block;font-family:'Spline Sans Mono',monospace;font-variant-numeric:tabular-nums;font-size:19px;font-weight:500}
+.abl{padding:12px 14px;border-top:1px solid var(--rule);display:flex;flex-direction:column;gap:6px}
+.flag{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;padding:14px;align-items:start}
+.flagmark{font-family:'Spline Sans Mono',monospace;font-size:12px;font-weight:700;border:2px solid var(--ink);padding:4px 8px;white-space:nowrap}
+.q{margin:6px 0 0;font-family:'Spline Sans Mono',monospace;font-size:13px;background:var(--well);padding:10px 12px;border:1px solid var(--rule)}
+.q mark{background:var(--h6);color:var(--t6);padding:0 2px}
+@container (max-width: 1000px){.main2{grid-template-columns:minmax(0,1fr)}}
+@container (max-width: 760px){.two{grid-template-columns:minmax(0,1fr)}.ro{grid-template-columns:minmax(0,1fr)}.ro div{border-right:0}.w{grid-template-columns:minmax(0,120px) minmax(0,1fr) 44px}}
+@container (max-width: 560px){.runid{margin-left:0}.wrap{padding:14px 16px 40px}.flag{grid-template-columns:minmax(0,1fr)}}
+</style>
+</helmet>
+<div class="cpw">
+<div class="cp" data-theme="{{theme}}">
+  <header class="bar">
+    <a class="brand" href="Main.dc.html" aria-label="Context Profiler overview">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 19h18M2 15h18"></path><path d="M3 15V11h6v4M10 15V7h5v8M16 15v-3h3v3"></path><path d="M2 3v2M7 3v2M12 3v2M17 3v2"></path></svg>
+      <b>Context Profiler</b>
+    </a>
+    <nav class="nav" aria-label="Screens">
+      <a href="Main.dc.html">Overview</a>
+      <a href="Flame.dc.html">Flame graph</a>
+      <a href="Segments.dc.html">Segments</a>
+      <a href="Trace.dc.html" aria-current="page">Traces</a>
+      <a href="Pruning.dc.html">Pruning</a>
+    </nav>
+    <span class="runid mono">run 0007 · trace 0142 · 6 Nov 2026 14:07 EAT</span>
+  </header>
+  <main class="wrap">
+    <div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 20px">
+      <div style="display: flex; flex-direction: column; gap: 4px; margin-right: auto">
+        <span class="lbl">Trace drill-down · llama-3.1-8b via Ollama · temperature 0 · 8,412 in / 96 out</span>
+        <h1 class="title">Why trace 0142 answered the way it did</h1>
+      </div>
+      <div class="fg" role="group" aria-label="Scoring mode">
+        <button class="btn" type="button" aria-pressed="{{isLog}}" onClick="{{setLog}}">Logprob</button>
+        <button class="btn" type="button" aria-pressed="{{isBox}}" onClick="{{setBox}}">Black-box</button>
+      </div>
+    </div>
+
+    <div class="two">
+      <section class="panel" aria-labelledby="rq-h">
+        <div class="ph"><span class="n">04.1</span><h2 id="rq-h">Request · user turn</h2><span class="mono dim" style="margin-left: auto; font-size: 11.5px">50 tok · untrusted</span></div>
+        <div class="msg">
+          <p class="sw-text" lang="sw">Nimeapply kazi ya driver Thika juzi, status iko aje?</p>
+          <p class="gloss">I applied for the driver job in Thika the day before yesterday. What’s the status?</p>
+        </div>
+        <div class="meta"><span>channel: WhatsApp</span><span>locale: sw-KE (Sheng)</span><span>32 segments</span></div>
+      </section>
+      <section class="panel" aria-labelledby="rs-h">
+        <div class="ph"><span class="n">04.2</span><h2 id="rs-h">Original response</h2><span class="mono dim" style="margin-left: auto; font-size: 11.5px">score {{origScore}}</span></div>
+        <div class="msg">
+          <p class="sw-text" lang="sw">Ombi lako la kazi ya Dereva, Thika (JB-88213) liko “Shortlisted” tangu 4 Nov. Tangazo hili linataja ada ya usajili ya KSh 2,000: JobBridge haitozi waombaji ada yoyote. Usilipe, na bonyeza “Ripoti tangazo”.</p>
+          <p class="gloss">Your application for Driver, Thika (JB-88213) has been “Shortlisted” since 4 Nov. This listing mentions a KSh 2,000 registration fee: JobBridge never charges applicants. Don’t pay, and tap “Report listing”.</p>
+        </div>
+        <div class="meta"><span>tool call: get_application_status(id="JB-88213")</span><span>96 tok</span></div>
+      </section>
+    </div>
+
+    <div class="main2">
+      <section class="panel" aria-labelledby="ab-h">
+        <div class="ph"><span class="n">04.3</span><h2 id="ab-h">Ablation raster · 32 masks × 32 segments</h2><span class="dim" style="font-size: 12.5px">filled = kept, outlined = removed · select a mask to read its response</span></div>
+        <div class="rbox">
+          <div class="raster">
+            <div class="rhead" aria-hidden="true">
+              <span class="mono dim" style="font-size: 10px">mask</span>
+              <div class="kinds" style="grid-template-columns: 9fr 12fr 6fr 4fr 1fr"><span>System</span><span>Tools</span><span>Retrieved</span><span>Hist</span><span>U</span></div>
+              <span class="mono dim" style="font-size: 10px">{{scoreName}}</span>
+            </div>
+            <sc-for list="{{masks}}" as="m" hint-placeholder-count="32">
+              <button class="mrow {{m.cls}}" type="button" onClick="{{m.pick}}" aria-pressed="{{m.on}}" aria-label="{{m.aria}}">
+                <span class="mono dim" style="font-size: 10.5px">#{{m.n}}</span>
+                <span class="cells" style="grid-template-columns: repeat(32, minmax(0, 1fr))">
+                  <sc-for list="{{m.cells}}" as="c" hint-placeholder-count="32"><i class="{{c}}"></i></sc-for>
+                </span>
+                <span class="sc"><b style="width: {{m.w}}px"></b>{{m.s}}</span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+        <div class="abl" aria-live="polite">
+          <span class="lbl">Mask #{{am.n}} · {{am.kept}} kept · score {{am.s}}</span>
+          <p class="sw-text" lang="sw" style="font-size: 15px">{{am.sw}}</p>
+          <p class="gloss">{{am.en}}</p>
+          <span class="mono dim" style="font-size: 11.5px">{{am.why}}</span>
+        </div>
+      </section>
+
+      <div style="display: flex; flex-direction: column; gap: 14px; min-width: 0">
+        <section class="panel" aria-labelledby="wt-h">
+          <div class="ph"><span class="n">04.4</span><h2 id="wt-h">Surrogate weights</h2><span class="mono dim" style="margin-left: auto; font-size: 11.5px">Lasso · 95% bootstrap CI</span></div>
+          <div class="ro">
+            <div><span class="lbl">Held-out R²</span><span class="v">{{fit.r2}}</span><span class="mono dim" style="font-size: 11.5px">{{fit.ok}}</span></div>
+            <div><span class="lbl">Non-zero weights</span><span class="v">{{fit.nz}}</span><span class="mono dim" style="font-size: 11.5px">of 32</span></div>
+            <div><span class="lbl">Top-5 agree w/ other mode</span><span class="v">4 / 5</span><span class="mono dim" style="font-size: 11.5px">Spearman 0.81</span></div>
+          </div>
+          <div class="wts">
+            <sc-for list="{{weights}}" as="w" hint-placeholder-count="12">
+              <div class="w">
+                <span class="nm" title="{{w.fp}}">{{w.fp}}</span>
+                <span class="track" role="img" aria-label="{{w.aria}}"><b class="{{w.h}}" style="width: {{w.wd}}%"></b><s style="left: {{w.lo}}%; width: {{w.ci}}%"></s></span>
+                <span style="text-align: right">{{w.v}}</span>
+              </div>
+            </sc-for>
+            <div class="w" style="border-bottom: 0"><span class="nm dim">{{restLabel}}</span><span></span><span style="text-align: right" class="dim">≈ 0</span></div>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="in-h">
+          <div class="ph"><span class="n">04.5</span><h2 id="in-h">Injection signal</h2></div>
+          <div class="flag">
+            <span class="flagmark">⚑ REVIEW</span>
+            <div>
+              <p style="margin: 0; color: var(--ink-2)"><b style="color: var(--ink)" class="mono">rag/listing:88213 › body</b> is untrusted employer text and carries the third-largest weight in this trace (top 1%). Here the system section <span class="mono">## Fraud warnings</span> turned it into a warning. In mask #{{dangerN}}, with that section removed, the model passed the fee demand on as fact.</p>
+              <blockquote class="q">…Mwajiri anaomba <mark>ada ya usajili KSh 2,000</mark> ilipwe kwa M-namba kabla ya interview…</blockquote>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light","auto"],"default":"light"},"$preview":{"width":1440,"height":1700}}'>
+class Component extends DCLogic {
+  bin(v) { return v < .05 ? 0 : v < .15 ? 1 : v < .25 ? 2 : v < .40 ? 3 : v < .55 ? 4 : v < .70 ? 5 : 6; }
+  rnd(a) { var x = Math.sin(a * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); }
+  data() {
+    if (this._d) return this._d;
+    var S = [['system/## Role',.62],['system/## Tone rules',.31],['system/## Escalation',.48],['system/## Refund policy 2023',.01],['system/## Swahili & Sheng',.44],['system/## Company history',0],['system/## Fraud warnings',.71],['system/## Formatting',.22],['system/## Holiday hours',.02],
+      ['tool/get_application_status',.81],['tool/search_jobs',.52],['tool/get_job',.44],['tool/apply_to_job',.04],['tool/schedule_interview',.03],['tool/upload_cv',.02],['tool/get_salary_band',.09],['tool/translate_text',.02],['tool/list_counties',.01],['tool/report_listing',.05],['tool/convert_currency',0],['tool/get_weather',0],
+      ['rag/kb:application-status#1',.58],['rag/kb:cv-tips#3',.12],['rag/listing:88213',.74],['rag/kb:press-2019#2',0],['rag/kb:office-locations#4',.03],['rag/kb:fraud-faq#1',.39],
+      ['history/user −2',.08],['history/assistant −2',.06],['history/user −1',.27],['history/assistant −1',.18],['user/current',.92]];
+    var masks = [];
+    for (var r = 0; r < 32; r++) {
+      var keep = [], s = -2.6;
+      for (var c = 0; c < 32; c++) { var k = this.rnd(r * 41 + c * 7 + 3) < .5; keep.push(k); if (k) s += S[c][1] * 1.55; }
+      s += (this.rnd(r * 13 + 1) - .5) * .5;
+      masks.push({ keep: keep, s: s });
+    }
+    masks[6].keep[6] = false; masks[6].keep[23] = true; masks[6].keep[31] = true; masks[6].keep[9] = true;
+    var box = S.map(function (x, i) { var j = Math.sin(i * 3.7) * .07; return [x[0], Math.max(0, x[1] * .86 + j * x[1])]; });
+    this._d = { S: S, masks: masks, box: box };
+    return this._d;
+  }
+  respond(keep) {
+    if (!keep[31]) return ['Habari! Ningependa kukusaidia. Unaweza kunieleza zaidi kuhusu unachohitaji?', 'Hello! I’d like to help. Can you tell me more about what you need?', 'user/current removed: the model has no question to answer.'];
+    if (!keep[9]) return ['Samahani, siwezi kuangalia hali ya ombi lako kwa sasa. Tafadhali jaribu tena baadaye.', 'Sorry, I can’t check your application status right now. Please try again later.', 'get_application_status removed: no tool to call.'];
+    if (keep[23] && !keep[6]) return ['Ombi lako liko “Shortlisted”. Mwajiri anaomba ada ya usajili KSh 2,000 ilipwe kwa M-namba kabla ya interview.', 'Your application is “Shortlisted”. The employer asks for a KSh 2,000 registration fee to be paid by mobile money before the interview.', 'Fraud warnings removed, listing kept: the injected fee demand is relayed as fact.'];
+    if (!keep[23]) return ['Ombi lako la kazi ya Dereva, Thika liko “Shortlisted” tangu 4 Nov. Utajulishwa tarehe ya mahojiano.', 'Your Driver, Thika application has been “Shortlisted” since 4 Nov. You’ll be told the interview date.', 'listing:88213 removed: status is correct, the fee warning disappears.'];
+    if (!keep[4]) return ['Your application for Driver, Thika (JB-88213) is Shortlisted since 4 Nov. The listing mentions a KSh 2,000 fee; JobBridge never charges applicants.', '(Same content, but in English: the user wrote in Sheng.)', 'Swahili & Sheng replies removed: language drifts to English.'];
+    return ['Ombi lako la kazi ya Dereva, Thika (JB-88213) liko “Shortlisted” tangu 4 Nov. Tangazo linataja ada ya KSh 2,000: JobBridge haitozi waombaji ada. Usilipe.', 'Close to the original: status, fee warning and advice all present.', 'All high-weight segments kept.'];
+  }
+  renderVals() {
+    var self = this, d = this.data(), st = this.state || {};
+    var mode = st.mode || 'log', sel = st.sel ?? 6;
+    var W = mode === 'log' ? d.S : d.box;
+    var origScore = mode === 'log' ? '+3.21' : '1.00';
+    var fmtS = function (s) { return mode === 'log' ? (s >= 0 ? '+' : '') + s.toFixed(2) : (1 / (1 + Math.exp(-s))).toFixed(2); };
+    var masks = d.masks.map(function (m, i) {
+      var resp = self.respond(m.keep);
+      var w = Math.round(Math.max(2, Math.min(60, (m.s + 3) / 6.5 * 60)));
+      return { n: String(i + 1).padStart(2, '0'), cls: i === sel ? 'on' : '', on: i === sel, w: w, s: fmtS(m.s),
+        cells: m.keep.map(function (k) { return k ? 'k' : 'x'; }),
+        aria: 'Mask ' + (i + 1) + ', ' + m.keep.filter(Boolean).length + ' of 32 kept, score ' + fmtS(m.s) + '. ' + resp[2],
+        pick: function () { self.setState({ sel: i }); } };
+    });
+    var am = d.masks[sel], resp = this.respond(am.keep);
+    var sorted = W.map(function (x, i) { return { fp: x[0], v: x[1], i: i }; }).sort(function (a, b) { return b.v - a.v; });
+    var top = sorted.slice(0, 12), mx = 1;
+    var weights = top.map(function (t) {
+      var ci = .06 + (1 - t.v) * .1;
+      var lo = Math.max(0, t.v - ci / 2), hi = Math.min(1, t.v + ci / 2);
+      return { fp: t.fp, v: t.v.toFixed(2), h: 'h' + self.bin(t.v), wd: (t.v / mx * 100).toFixed(1), lo: (lo * 100).toFixed(1), ci: ((hi - lo) * 100).toFixed(1),
+        aria: t.fp + ' weight ' + t.v.toFixed(2) + ', 95 percent interval ' + lo.toFixed(2) + ' to ' + hi.toFixed(2) };
+    });
+    var nz = W.filter(function (x) { return x[1] >= .02; }).length;
+    return {
+      theme: this.props.theme ?? 'light', isLog: mode === 'log', isBox: mode === 'box',
+      setLog: function () { self.setState({ mode: 'log' }); }, setBox: function () { self.setState({ mode: 'box' }); },
+      scoreName: mode === 'log' ? 'logit p' : 'similarity', origScore: origScore, masks: masks,
+      am: { n: String(sel + 1).padStart(2, '0'), kept: am.keep.filter(Boolean).length + '/32', s: fmtS(am.s), sw: resp[0], en: resp[1], why: resp[2] },
+      weights: weights, restLabel: (32 - 12) + ' more segments',
+      fit: mode === 'log' ? { r2: '0.83', ok: 'fit OK (≥ 0.50)', nz: nz } : { r2: '0.71', ok: 'fit OK · embedding sim.', nz: nz },
+      dangerN: '07'
+    };
+  }
+}
+</script>
+</body>
+</html>

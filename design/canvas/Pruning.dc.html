@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Context Profiler · Pruning report</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&amp;family=Spline+Sans+Mono:wght@300..700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0f1114}
+a{color:inherit}a:hover{color:inherit}
+.cpw{container-type:inline-size}
+.cp{--chassis:#0f1114;--bezel:#14161a;--well:#1a1d22;--rule:#272b32;--rule-2:#3a3f48;--ink:#e6e8eb;--ink-2:#a9afb8;--ink-3:#8a919b;--h0:#2c4d7d;--h1:#366794;--h2:#49829f;--h3:#7a9997;--h4:#dd9b5f;--h5:#ffb45b;--h6:#ffe183;--t0:#eef0f2;--t1:#eef0f2;--t2:#0e1013;--t3:#0e1013;--t4:#0e1013;--t5:#0e1013;--t6:#0e1013;--hatch:rgba(230,232,235,.16);font-family:'Archivo',system-ui,sans-serif;font-stretch:100%;background:var(--chassis);color:var(--ink);font-size:14px;line-height:1.45;min-height:100vh;box-sizing:border-box}
+.cp[data-theme="light"]{--chassis:#dcdee1;--bezel:#e8e9ea;--well:#f3f4f4;--rule:#c6c9ce;--rule-2:#a3a8b0;--ink:#111317;--ink-2:#3f444c;--ink-3:#555b64;--h0:#86a6cf;--h1:#6494c1;--h2:#4a84a1;--h3:#52706d;--h4:#864100;--h5:#782200;--h6:#5b1001;--t0:#0e1013;--t1:#0e1013;--t2:#0e1013;--t3:#fff;--t4:#fff;--t5:#fff;--t6:#fff;--hatch:rgba(17,19,23,.14)}
+@media (prefers-color-scheme: light){.cp[data-theme="auto"]{--chassis:#dcdee1;--bezel:#e8e9ea;--well:#f3f4f4;--rule:#c6c9ce;--rule-2:#a3a8b0;--ink:#111317;--ink-2:#3f444c;--ink-3:#555b64;--h0:#86a6cf;--h1:#6494c1;--h2:#4a84a1;--h3:#52706d;--h4:#864100;--h5:#782200;--h6:#5b1001;--t0:#0e1013;--t1:#0e1013;--t2:#0e1013;--t3:#fff;--t4:#fff;--t5:#fff;--t6:#fff;--hatch:rgba(17,19,23,.14)}}
+.cp *{box-sizing:border-box}
+.cp :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.mono{font-family:'Spline Sans Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.lbl{font-stretch:72%;font-weight:600;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--ink-2)}
+.dim{color:var(--ink-3)}
+.h0{background:var(--h0);color:var(--t0)}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 20px;padding:8px 20px;border-bottom:1px solid var(--rule);background:var(--bezel)}
+.brand{display:flex;gap:10px;text-decoration:none;min-height:44px;align-items:center}
+.brand b{font-stretch:62%;font-weight:900;font-size:21px;letter-spacing:.05em;text-transform:uppercase}
+.nav{display:flex;flex-wrap:wrap;gap:2px}
+.nav a{font-stretch:72%;font-weight:600;font-size:13px;letter-spacing:.07em;text-transform:uppercase;text-decoration:none;color:var(--ink-2);padding:0 10px;border:1px solid transparent;border-radius:2px;min-height:44px;display:inline-flex;align-items:center}
+.nav a:hover{color:var(--ink);border-color:var(--rule-2)}
+.nav a[aria-current="page"]{color:var(--ink);border-color:var(--ink)}
+.runid{margin-left:auto;font-size:12px;color:var(--ink-2)}
+.panel{background:var(--bezel);border:1px solid var(--rule);border-radius:2px;min-width:0}
+.ph{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:9px 14px;border-bottom:1px solid var(--rule)}
+.ph .n{font-family:'Spline Sans Mono',monospace;font-size:11px;color:var(--ink-3)}
+.ph h2,.ph h3{margin:0;font-stretch:72%;font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.btn{font:inherit;font-stretch:72%;font-weight:700;letter-spacing:.07em;text-transform:uppercase;font-size:12.5px;min-height:44px;padding:0 14px;border:1px solid var(--rule-2);background:transparent;color:var(--ink);border-radius:2px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;transition:transform .12s,box-shadow .12s}
+.btn:hover{border-color:var(--ink);box-shadow:3px 3px 0 var(--rule-2);transform:translate(-1px,-1px)}
+@media (prefers-reduced-motion: reduce){.cp *,.cp *::before,.cp *::after{animation:none!important;transition:none!important}}
+/* report */
+.wrap{max-width:1400px;margin:0 auto;padding:22px 20px 56px;display:flex;flex-direction:column;gap:16px}
+.verdict{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:20px;align-items:end}
+.hd{margin:8px 0 0;font-stretch:125%;font-weight:800;letter-spacing:-.03em;line-height:.92;font-size:clamp(44px,7cqi,104px);font-variant-numeric:tabular-nums}
+.hd small{display:block;font-size:.3em;font-stretch:72%;font-weight:600;letter-spacing:.02em;color:var(--ink-2);margin-top:10px;line-height:1.2}
+.stamp{display:inline-flex;align-items:center;gap:8px;border:2px solid var(--ink);padding:6px 12px;font-family:'Spline Sans Mono',monospace;font-weight:700;font-size:14px;letter-spacing:.04em}
+.stamp.fail{border-style:dashed}
+.ledger{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.ledger div{padding:12px 14px;border-bottom:1px solid var(--rule);min-width:0}
+.ledger div:nth-child(odd){border-right:1px solid var(--rule)}
+.v{display:block;font-family:'Spline Sans Mono',monospace;font-variant-numeric:tabular-nums;font-size:21px;font-weight:500;letter-spacing:-.02em}
+.split{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;align-items:start}
+.diff{font-family:'Spline Sans Mono',monospace;font-size:12.5px}
+.hunk{border-bottom:1px solid var(--rule)}
+.hh{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:6px 14px;background:var(--well)}
+.hh code{color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.keep{display:inline-flex;align-items:center;gap:8px;min-height:40px;cursor:pointer;font-family:'Archivo',sans-serif;font-stretch:72%;font-weight:700;letter-spacing:.07em;text-transform:uppercase;font-size:12px}
+.keep input{width:18px;height:18px;accent-color:var(--ink);margin:0}
+.ln{display:grid;grid-template-columns:44px 18px minmax(0,1fr);padding:0 14px;line-height:22px}
+.ln .no{color:var(--ink-3);text-align:right;padding-right:10px}
+.ln.del{background-image:repeating-linear-gradient(135deg,var(--hatch) 0 1px,transparent 1px 6px)}
+.ln.del .tx{text-decoration:line-through;text-decoration-thickness:1px;color:var(--ink-2)}
+.ln.add .tx{font-weight:700}
+.ln.add{box-shadow:inset 3px 0 0 var(--ink)}
+.hunk.kept .ln.del{background-image:none}
+.hunk.kept .ln.del .tx{text-decoration:none;color:var(--ink)}
+.hunk.kept .ln .sg{visibility:hidden}
+.tx{white-space:pre-wrap;word-break:break-word}
+.vgrid{display:grid;grid-template-columns:repeat(15,minmax(0,1fr));gap:3px;padding:14px}
+.vgrid i{display:block;aspect-ratio:1;background:var(--ink-2)}
+.vgrid i.bad{background:transparent;box-shadow:inset 0 0 0 2px var(--ink);position:relative}
+.vgrid i.bad::after{content:"";position:absolute;inset:3px;background:linear-gradient(45deg,transparent 45%,var(--ink) 45% 55%,transparent 55%),linear-gradient(-45deg,transparent 45%,var(--ink) 45% 55%,transparent 55%)}
+.reg{list-style:none;margin:0;padding:0}
+.reg li{padding:12px 14px;border-top:1px solid var(--rule);display:flex;flex-direction:column;gap:4px}
+.reg li.ok{opacity:.62}
+.meter{height:8px;background:var(--well);border:1px solid var(--rule-2);position:relative;margin:8px 0 4px}
+.meter b{position:absolute;left:0;top:0;bottom:0;background:var(--ink)}
+.meter s{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);text-decoration:none}
+pre.cmd{margin:0;padding:12px 14px;font-family:'Spline Sans Mono',monospace;font-size:12px;background:var(--well);border-top:1px solid var(--rule);white-space:pre-wrap;word-break:break-word;color:var(--ink-2)}
+@container (max-width: 1000px){.verdict,.split{grid-template-columns:minmax(0,1fr)}}
+@container (max-width: 560px){.runid{margin-left:0}.wrap{padding:16px 16px 40px}.ln{grid-template-columns:30px 14px minmax(0,1fr);padding:0 8px}.hh{grid-template-columns:minmax(0,1fr) auto;}.hh .tk{display:none}.vgrid{grid-template-columns:repeat(10,minmax(0,1fr))}.ledger{grid-template-columns:minmax(0,1fr)}.ledger div:nth-child(odd){border-right:0}}
+</style>
+</helmet>
+<div class="cpw">
+<div class="cp" data-theme="{{theme}}">
+  <header class="bar">
+    <a class="brand" href="Main.dc.html" aria-label="Context Profiler overview">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 19h18M2 15h18"></path><path d="M3 15V11h6v4M10 15V7h5v8M16 15v-3h3v3"></path><path d="M2 3v2M7 3v2M12 3v2M17 3v2"></path></svg>
+      <b>Context Profiler</b>
+    </a>
+    <nav class="nav" aria-label="Screens">
+      <a href="Main.dc.html">Overview</a>
+      <a href="Flame.dc.html">Flame graph</a>
+      <a href="Segments.dc.html">Segments</a>
+      <a href="Trace.dc.html">Traces</a>
+      <a href="Pruning.dc.html" aria-current="page">Pruning</a>
+    </nav>
+    <span class="runid mono">run 0007 · prune v2 · verified 8 Nov 2026 11:52 EAT</span>
+  </header>
+  <main class="wrap">
+    <section class="verdict" aria-labelledby="v-h">
+      <div>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center">
+          <span class="stamp {{stampCls}}" aria-live="polite">{{verdict}}</span>
+          <span class="lbl">Agreement {{agreeTxt}} · threshold 95.0% · {{nCut}} hunks applied</span>
+        </div>
+        <h1 class="hd" id="v-h">−{{cutTok}} tok<small>per request, {{cutPct}} of the context window. Untick a hunk to keep that segment; the ledger and verdict recompute from the held-out runs.</small></h1>
+      </div>
+      <section class="panel" aria-label="Ledger">
+        <div class="ph"><span class="n">05.1</span><h2>Ledger</h2><span class="mono dim" style="margin-left: auto; font-size: 11.5px">$3.00 / 1M input · KSh 129.0 / USD</span></div>
+        <div class="ledger" aria-live="polite">
+          <div><span class="lbl">Tokens / request</span><span class="v">8,412 → {{after}}</span></div>
+          <div><span class="lbl">Cost / request</span><span class="v">$0.02524 → {{costAfter}}</span></div>
+          <div><span class="lbl">Saved / 100k requests</span><span class="v">{{saveUsd}}</span><span class="mono dim" style="font-size: 12px">≈ {{saveKes}}</span></div>
+          <div><span class="lbl">Held-out agreement</span><span class="v">{{agreeTxt}}</span><span class="mono dim" style="font-size: 12px">{{agreeN}} of 60 traces</span></div>
+        </div>
+      </section>
+    </section>
+
+    <div class="split">
+      <section class="panel" aria-labelledby="d-h">
+        <div class="ph"><span class="n">05.2</span><h2 id="d-h">prompt.diff</h2><span class="dim" style="font-size: 12.5px">removed lines are hatched and struck, never coloured: colour belongs to influence</span></div>
+        <div class="diff">
+          <sc-for list="{{hunks}}" as="h" hint-placeholder-count="12">
+            <div class="hunk {{h.cls}}">
+              <div class="hh">
+                <code>@@ {{h.file}} · {{h.fp}} @@</code>
+                <span class="tk mono dim" style="font-size: 11.5px">−{{h.tok}} tok · {{h.why}}</span>
+                <label class="keep"><input type="checkbox" checked="{{h.cut}}" onChange="{{h.toggle}}" aria-label="Apply removal of {{h.fp}}">Cut</label>
+              </div>
+              <sc-for list="{{h.lines}}" as="l" hint-placeholder-count="2">
+                <div class="ln {{l.k}}"><span class="no">{{l.no}}</span><span class="sg">{{l.sg}}</span><span class="tx">{{l.t}}</span></div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+        <pre class="cmd">$ ctxprof prune --run 0007 --keep tool/schedule_interview &gt; prompt.diff
+$ ctxprof verify --run 0007 --diff prompt.diff --held-out 60 --threshold 0.95</pre>
+      </section>
+
+      <div style="display: flex; flex-direction: column; gap: 16px; min-width: 0">
+        <section class="panel" aria-labelledby="g-h">
+          <div class="ph"><span class="n">05.3</span><h2 id="g-h">Verification · 60 held-out traces</h2></div>
+          <div class="vgrid" role="img" aria-label="{{gridAria}}">
+            <sc-for list="{{cells}}" as="c" hint-placeholder-count="60"><i class="{{c}}"></i></sc-for>
+          </div>
+          <div class="mono dim" style="display: flex; gap: 16px; flex-wrap: wrap; padding: 0 14px 12px; font-size: 11.5px">
+            <span style="display: inline-flex; gap: 6px; align-items: center"><i style="display: block; width: 12px; height: 12px; background: var(--ink-2)"></i>same outcome</span>
+            <span style="display: inline-flex; gap: 6px; align-items: center"><i style="display: block; width: 12px; height: 12px; box-shadow: inset 0 0 0 2px var(--ink)"></i>regression</span>
+          </div>
+          <ul class="reg">
+            <li class="{{r1cls}}"><span class="mono" style="font-weight: 600">trace 0033 · tool/schedule_interview</span><span style="color: var(--ink-2); font-size: 13.5px">“Naomba kubadilisha siku ya interview.” Without the schema the model said it cannot reschedule. Used in only 2 of 200 traces, which is why it looked DEAD.</span><span class="mono dim" style="font-size: 11.5px">{{r1state}}</span></li>
+            <li class="{{r2cls}}"><span class="mono" style="font-weight: 600">trace 0187 · tool/translate_text</span><span style="color: var(--ink-2); font-size: 13.5px">Same tool call and arguments; reply wording differs (“mshahara” vs “malipo”). Fails the strict JSON check, passes the task check.</span><span class="mono dim" style="font-size: 11.5px">{{r2state}}</span></li>
+          </ul>
+        </section>
+        <section class="panel" aria-labelledby="b-h">
+          <div class="ph"><span class="n">05.4</span><h2 id="b-h">Budget and reproducibility</h2></div>
+          <div style="padding: 12px 14px">
+            <span class="lbl">Spend vs hard cap</span>
+            <div class="meter" role="img" aria-label="11 dollars 38 spent of a 15 dollar cap"><b style="width: 75.9%"></b><s style="left: 100%"></s></div>
+            <div class="mono" style="display: flex; justify-content: space-between; font-size: 12px"><span>$11.38 spent</span><span class="dim">cap $15.00</span></div>
+          </div>
+          <div class="ledger" style="border-top: 1px solid var(--rule)">
+            <div><span class="lbl">Model calls</span><span class="v">6,520</span></div>
+            <div><span class="lbl">Cache hits</span><span class="v">1,226</span><span class="mono dim" style="font-size: 12px">18.8% · replay = $0.00</span></div>
+            <div style="border-bottom: 0"><span class="lbl">Poor-fit traces</span><span class="v">9</span><span class="mono dim" style="font-size: 12px">R² &lt; 0.50, excluded</span></div>
+            <div style="border-bottom: 0"><span class="lbl">Never pruned</span><span class="v">5</span><span class="mono dim" style="font-size: 12px">VOLATILE + untrusted</span></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light","auto"],"default":"light"},"$preview":{"width":1440,"height":1800}}'>
+class Component extends DCLogic {
+  fmt(n) { return Math.round(n).toLocaleString('en-US'); }
+  data() {
+    if (this._d) return this._d;
+    var H = [
+      ['sys_refund','prompts/system.md','## Refund policy (2023, legacy)',410,'DEAD · 200/200',14,['## Refund policy (2023, legacy)','Refunds for premium listings are processed within 14 days by the finance desk…'],null],
+      ['sys_history','prompts/system.md','## Company history',322,'DEAD · 200/200',47,['## Company history','JobBridge began in 2019 as a WhatsApp group for matatu drivers in Thika…'],null],
+      ['sys_holiday','prompts/system.md','## Holiday hours 2024',262,'DEAD · 200/200',71,['## Holiday hours 2024','Over Jamhuri Day (12 Dec) and Christmas, support replies within 48 hours…'],null],
+      ['t_apply','tools/registry.yaml','apply_to_job',344,'DEAD · 0 calls',22,['- name: apply_to_job','  description: Submit an application on the user’s behalf using their saved CV…'],null],
+      ['t_sched','tools/registry.yaml','schedule_interview',318,'DEAD · 2 calls',61,['- name: schedule_interview','  description: Book or move an interview slot with the employer…'],null],
+      ['t_cv','tools/registry.yaml','upload_cv',276,'DEAD · 0 calls',98,['- name: upload_cv','  description: Attach a PDF or photo of a CV to the user profile…'],null],
+      ['t_tr','tools/registry.yaml','translate_text',264,'DEAD · 0 calls',131,['- name: translate_text','  description: Translate between English and Kiswahili…'],null],
+      ['t_cty','tools/registry.yaml','list_counties',188,'DEAD · 0 calls',160,['- name: list_counties','  description: Return the 47 counties and their codes…'],null],
+      ['t_fx','tools/registry.yaml','convert_currency',230,'DEAD · 0 calls',181,['- name: convert_currency','  description: Convert KES to USD, UGX or TZS at the daily rate…'],null],
+      ['t_wx','tools/registry.yaml','get_weather',300,'DEAD · 0 calls',204,['- name: get_weather','  description: Current weather for a town, for interview travel…'],null],
+      ['r_press','retriever.yaml','kb:press-2019#2',318,'DEAD · 143 retrievals',9,null,'  - kb:press-2019#2'],
+      ['r_office','retriever.yaml','kb:office-locations#4',262,'DEAD · 97 retrievals',10,null,'  - kb:office-locations#4']
+    ];
+    this._d = { H: H };
+    return this._d;
+  }
+  renderVals() {
+    var self = this, d = this.data(), st = this.state || {};
+    var keep = st.keep || { t_sched: true };
+    var cut = 0, n = 0;
+    d.H.forEach(function (h) { if (!keep[h[0]]) { cut += h[3]; n++; } });
+    var bad1 = !keep.t_sched, bad2 = !keep.t_tr;
+    var agree = 60 - (bad1 ? 1 : 0) - (bad2 ? 1 : 0);
+    var pass = agree / 60 >= .95;
+    var after = 8412 - cut, saveUsd = cut * 3 / 1e6 * 1e5;
+    var hunks = d.H.map(function (h) {
+      var lines = [];
+      if (h[6]) h[6].forEach(function (t, i) { lines.push({ k: 'del', sg: '−', no: String(h[5] + i), t: t }); });
+      if (h[7]) { lines.push({ k: '', sg: ' ', no: String(h[5] - 1), t: 'exclude:' }); lines.push({ k: 'add', sg: '+', no: String(h[5]), t: h[7] }); }
+      return { file: h[1], fp: h[2], tok: h[3], why: h[4], cut: !keep[h[0]], cls: keep[h[0]] ? 'kept' : '', lines: lines,
+        toggle: function () { var k = Object.assign({}, keep); k[h[0]] = !k[h[0]]; self.setState({ keep: k }); } };
+    });
+    var cells = [];
+    for (var i = 0; i < 60; i++) cells.push((i === 11 && bad1) || (i === 47 && bad2) ? 'bad' : '');
+    return {
+      theme: this.props.theme ?? 'light', hunks: hunks, cells: cells,
+      cutTok: self.fmt(cut), cutPct: (cut / 8412 * 100).toFixed(1) + '%', nCut: n, after: self.fmt(after),
+      costAfter: '$' + (after * 3 / 1e6).toFixed(5), saveUsd: '$' + saveUsd.toFixed(2), saveKes: 'KSh ' + self.fmt(Math.round(saveUsd * 129 / 100) * 100),
+      agreeTxt: (agree / 60 * 100).toFixed(1) + '%', agreeN: agree,
+      verdict: pass ? '✓ VERIFIED · RECOMMEND' : '× BELOW THRESHOLD · DO NOT SHIP', stampCls: pass ? '' : 'fail',
+      gridAria: agree + ' of 60 held-out traces kept the same outcome',
+      r1cls: bad1 ? '' : 'ok', r1state: bad1 ? 'REGRESSION · untick “Cut” on schedule_interview to restore' : 'RESOLVED · schema restored (+318 tok)',
+      r2cls: bad2 ? '' : 'ok', r2state: bad2 ? 'ACCEPTED · strict-check miss, task check passes' : 'RESOLVED · schema kept (+264 tok)'
+    };
+  }
+}
+</script>
+</body>
+</html>
