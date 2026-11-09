@@ -136,10 +136,14 @@ test("waterfall: hover readout and click opens the request", async ({ page }) =>
   await page.goto("./#/");
   const screen = page.locator(".wf-screen");
   await expect(screen).toBeVisible();
-  const box = (await screen.boundingBox())!;
-  await page.mouse.move(box.x + box.width * 0.3, box.y + 1);
+  await page.evaluate(() => document.fonts.ready);
   const tip = page.locator(".wf-tip");
-  await expect(tip).toContainText("t0001");
+  // position is resolved when the action runs, so late layout shifts (web fonts) cannot move the target
+  await expect(async () => {
+    const w = (await screen.boundingBox())!.width;
+    await screen.hover({ position: { x: Math.round(w * 0.3), y: 1 } });
+    await expect(tip).toContainText("t0001", { timeout: 500 });
+  }).toPass({ timeout: 8000 });
   await expect(tip).toContainText(/influence|pinned/);
   await screen.focus();
   await page.keyboard.press("ArrowDown");
